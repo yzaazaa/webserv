@@ -29,7 +29,7 @@ class	Client
 		void		changeClientState(state state);
 		state		&getClientState();
 		void		appendRequestBuffer(char *msg);
-		void		appendResponseBuffer(char *msg);
+		void		appendResponseBuffer(std::string msg);
 		std::string	&getRequestBuffer();
 		std::string	&getResponseBuffer();
 		int			getResponseLen();

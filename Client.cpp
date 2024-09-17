@@ -46,10 +46,9 @@ void	Client::appendRequestBuffer(char *msg)
 	this->request_buffer += message;
 }
 
-void	Client::appendResponseBuffer(char *msg)
+void	Client::appendResponseBuffer(std::string msg)
 {
-	std::string	message(msg);
-	this->response_buffer += message;
+	this->response_buffer += msg;
 }
 
 std::string	&Client::getRequestBuffer()

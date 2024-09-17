@@ -68,7 +68,7 @@ int	main()
 			int socket_fd = evList[i].ident;
 			if(evList[i].flags == EV_EOF)
 			{
-				for (auto it = client_list.begin(); it < client_list.end(); it++)
+				for (std::vector<Client>::iterator it = client_list.begin(); it < client_list.end(); it++)
 				{
 					if (socket_fd == it->getClientSocket())
 					{
@@ -93,7 +93,7 @@ int	main()
 				}
 				else
 				{
-					for (auto it = client_list.begin(); it < client_list.end(); it++)
+					for (std::vector<Client>::iterator it = client_list.begin(); it < client_list.end(); it++)
 					{
 						if (socket_fd == it->getClientSocket() && it->getClientState() == READING)
 						{
@@ -120,7 +120,7 @@ int	main()
 			}
 			else if (evList[i].filter == EVFILT_WRITE)
 			{
-				for (auto it = client_list.begin(); it < client_list.end(); it++)
+				for (std::vector<Client>::iterator it = client_list.begin(); it < client_list.end(); it++)
 				{
 					if (socket_fd != it->getClientSocket())
 						continue;
