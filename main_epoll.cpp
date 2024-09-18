@@ -76,8 +76,8 @@ int	main()
 			if(events[i].events & EPOLLERR || events[i].events & EPOLLHUP)
 			{
 				std::cout << "client disconnected." << std::endl;
-				// delete_write(socket_fd, epoll_fd);
-				// delete_read(socket_fd, epoll_fd);
+				delete_write(socket_fd, epoll_fd);
+				delete_read(socket_fd, epoll_fd);
 				close(socket_fd); 
 				client_map.erase(it);
 			}
@@ -98,8 +98,8 @@ int	main()
 					if (bytes_read <= 0)
 					{
 						std::cout << "client disconnected." << std::endl;
-						// delete_read(socket_fd, epoll_fd);
-						// delete_write(socket_fd, epoll_fd);
+						delete_read(socket_fd, epoll_fd);
+						delete_write(socket_fd, epoll_fd);
 						close(socket_fd);
 						client_map.erase(it);
                         continue ;
@@ -107,7 +107,7 @@ int	main()
 					it->second.appendRequestBuffer(message);
 					std::cout << "Request from client: " << std::endl << it->second.getRequestBuffer() << std::endl;
 					it->second.clearRequestBuffer();
-					// delete_read(socket_fd, epoll_fd);
+					delete_read(socket_fd, epoll_fd);
 					register_write(socket_fd, epoll_fd);
 					it->second.changeClientState(PROCESSING);
 				}
@@ -124,8 +124,8 @@ int	main()
 					write(socket_fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
 					it->second.clearResponseBuffer();
 					it->second.changeClientState(READING);
-					// delete_write(socket_fd, epoll_fd);
-					// register_read(socket_fd, epoll_fd);
+					delete_write(socket_fd, epoll_fd);
+					register_read(socket_fd, epoll_fd);
 				}
 			}
 		}

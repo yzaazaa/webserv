@@ -2,6 +2,9 @@ import socket
 import threading
 import sys
 
+NUM_THREADS = 50
+NB_MSG = 100
+
 # Global flag and lock to indicate an error
 error_occurred = False
 error_lock = threading.Lock()
@@ -11,7 +14,7 @@ def send_requests(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         s.connect((host, port))
-        for _ in range(100):  # Adjust the number of messages as needed
+        for _ in range(NB_MSG):  # Adjust the number of messages as needed
             try:
                 s.sendall(b'Test message')
                 response = s.recv(1024)
@@ -42,6 +45,7 @@ def run_load_test(host, port, num_threads):
     if error_occurred:
         print("An error occurred. Exiting...")
         sys.exit(1)
+    print(f"Ran {NUM_THREADS} clients and each client sent {NB_MSG} message.")
 
 # Run the load test
-run_load_test('localhost', 8080, 5000)  # 50 concurrent clients
+run_load_test('localhost', 8080, NUM_THREADS)  # 50 concurrent clients
