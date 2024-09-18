@@ -20,7 +20,7 @@ void modify_event(int socket, int kq, short filter, u_short action) {
 
 void	register_socket(int socket, int kq) {
 	modify_event(socket, kq, EVFILT_READ, EV_ADD | EV_ENABLE);
-	modify_event(socket, kq, EVFILT_WRITE EV_ADD | EV_DISABLE);
+	modify_event(socket, kq, EVFILT_WRITE, EV_ADD | EV_DISABLE);
 }
 
 void enable_write(int socket, int kq) {
@@ -44,8 +44,6 @@ void	delete_socket_events(int socket, int kq)
 	modify_event(socket, kq, EVFILT_WRITE, EV_DELETE);
 	modify_event(socket, kq, EVFILT_READ, EV_DELETE);
 }
-
-void	accept_new_connection()
 
 int	main()
 {
@@ -73,11 +71,6 @@ int	main()
 		{
 			int socket_fd = evList[i].ident;
 			std::map<int, Client>::iterator it = client_map.find(socket_fd);
-			if (it == client_map.end() && server_socket != socket_fd)
-			{
-				std::cerr << "Client not found." << std::endl;
-				continue ;
-			}
 			if(evList[i].flags == EV_EOF)
 			{
 				std::cout << "client disconnected." << std::endl;
@@ -93,7 +86,7 @@ int	main()
 					Client	new_client(client_socket);
 					client_map[client_socket] = new_client;
 					std::cout << "New client connected." << std::endl;
-					register_socket(socket_fd, kq);
+					register_socket(client_socket, kq);
 				}
 				else if (it->second.getClientState() == READING)
 				{
@@ -113,23 +106,17 @@ int	main()
 					disable_read(socket_fd, kq);
 					enable_write(socket_fd, kq);
 					it->second.changeClientState(PROCESSING);
-				}
-			}
-			else if (evList[i].filter == EVFILT_WRITE)
-			{
-				if (it->second.getClientState() == PROCESSING)
-				{
 					it->second.appendResponseBuffer("Message received\r\n");
 					it->second.changeClientState(SENDING);
 				}
-				else if (it->second.getClientState() == SENDING)
-				{
-					write(socket_fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
-					it->second.clearResponseBuffer();
-					it->second.changeClientState(READING);
-					disable_write(socket_fd, kq);
-					enable_read(socket_fd, kq);
-				}
+			}
+			else if (evList[i].filter == EVFILT_WRITE && it->second.getClientState() == SENDING)
+			{
+				write(socket_fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
+				it->second.clearResponseBuffer();
+				it->second.changeClientState(READING);
+				disable_write(socket_fd, kq);
+				enable_read(socket_fd, kq);
 			}
 		}
 	}

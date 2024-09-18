@@ -2,7 +2,7 @@ import socket
 import threading
 import sys
 
-NUM_THREADS = 50
+NUM_THREADS = 100
 NB_MSG = 100
 
 # Global flag and lock to indicate an error
