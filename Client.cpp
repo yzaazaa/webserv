@@ -77,17 +77,17 @@ std::string	&Client::getResponseBuffer()
 
 int			Client::getResponseLen()
 {
-	return (this->response_buffer).length();
+	return this->response_buffer.length();
 }
 
 void	Client::clearRequestBuffer()
 {
-	this->request_buffer = "";
+	this->request_buffer.clear();
 }
 
 void	Client::clearResponseBuffer()
 {
-	this->response_buffer = "";
+	this->response_buffer.clear();
 }
 
 void	Client::modifyEvent(short filter, u_short action)

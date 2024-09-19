@@ -50,6 +50,7 @@ int	main()
 			perror("webserv: ");
 			return (1);
 		}
+		std::cout << "NEW EVENT\n";
 		for (int i = 0; i < nev; i++)
 		{
 			int socket_fd = evList[i].ident;
@@ -82,17 +83,22 @@ int	main()
 					}
 					it->second.appendRequestBuffer(message);
 					std::cout << "Request from client: " << std::endl << it->second.getRequestBuffer() << std::endl;
+					it->second.parseRequest();
 					it->second.clearRequestBuffer();
 					it->second.changeClientState(PROCESSING);
-					it->second.appendResponseBuffer("Message received\r\n");
+					it->second.handleRequest();
+					// it->second.appendResponseBuffer("Message received\r\n");
 					it->second.changeClientState(SENDING);
 				}
 			}
 			else if (evList[i].filter == EVFILT_WRITE && it->second.getClientState() == SENDING)
 			{
+				std::cout << it->second.getResponseBuffer() << std::endl;
 				write(socket_fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
 				it->second.clearResponseBuffer();
 				it->second.changeClientState(READING);
+				it->second.disconnect();
+				client_map.erase(it);
 			}
 		}
 	}
