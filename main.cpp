@@ -2,8 +2,8 @@
 #include <string>
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <sys/types.h>
 #include <sys/event.h>
+#include <sys/types.h>
 #include <sys/time.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -12,37 +12,11 @@
 
 # define MAX_EVENTS SOMAXCONN
 
-void modify_event(int socket, int kq, short filter, u_short action) {
-    struct kevent event;
-    EV_SET(&event, socket, filter, action, 0, 0, NULL);
-    kevent(kq, &event, 1, NULL, 0, NULL);
-}
-
-void	register_socket(int socket, int kq) {
-	modify_event(socket, kq, EVFILT_READ, EV_ADD | EV_ENABLE);
-	modify_event(socket, kq, EVFILT_WRITE, EV_ADD | EV_DISABLE);
-}
-
-void enable_write(int socket, int kq) {
-    modify_event(socket, kq, EVFILT_WRITE, EV_ENABLE);
-}
-
-void enable_read(int socket, int kq) {
-    modify_event(socket, kq, EVFILT_READ, EV_ENABLE);
-}
-
-void disable_write(int socket, int kq) {
-    modify_event(socket, kq, EVFILT_WRITE, EV_DISABLE);
-}
-
-void disable_read(int socket, int kq) {
-    modify_event(socket, kq, EVFILT_READ, EV_DISABLE);
-}
-
-void	delete_socket_events(int socket, int kq)
+void	register_socket(int socket, int kq)
 {
-	modify_event(socket, kq, EVFILT_WRITE, EV_DELETE);
-	modify_event(socket, kq, EVFILT_READ, EV_DELETE);
+	struct kevent evSet;
+	EV_SET(&evSet, socket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+	kevent(kq, &evSet, 1, NULL, 0, NULL);
 }
 
 int	main()
@@ -61,12 +35,21 @@ int	main()
 	std::cout << "Server binded." << std::endl;
 	listen(server_socket, MAX_EVENTS);
 	int	kq = kqueue();
+	if (kq == -1)
+	{
+		perror("webserv: ");
+		return (1);
+	}
 	struct kevent	evList[MAX_EVENTS];
 	register_socket(server_socket, kq);
 	while (true)
 	{
-		memset(evList, 0, sizeof(evList));
 		int nev = kevent(kq, NULL, 0, evList, sizeof(evList), NULL);
+		if (nev == -1)
+		{
+			perror("webserv: ");
+			return (1);
+		}
 		for (int i = 0; i < nev; i++)
 		{
 			int socket_fd = evList[i].ident;
@@ -74,8 +57,7 @@ int	main()
 			if(evList[i].flags == EV_EOF)
 			{
 				std::cout << "client disconnected." << std::endl;
-				delete_socket_events(socket_fd, kq);
-				close(socket_fd); 
+				it->second.disconnect();
 				client_map.erase(it);
 			}
 			else if (evList[i].filter == EVFILT_READ)
@@ -83,10 +65,9 @@ int	main()
 				if (socket_fd == server_socket)
 				{
 					int	client_socket = accept(server_socket, (struct sockaddr *)NULL, NULL); 
-					Client	new_client(client_socket);
+					Client	new_client(client_socket, kq);
 					client_map[client_socket] = new_client;
 					std::cout << "New client connected." << std::endl;
-					register_socket(client_socket, kq);
 				}
 				else if (it->second.getClientState() == READING)
 				{
@@ -95,16 +76,13 @@ int	main()
 					if (bytes_read <= 0)
 					{
 						std::cout << "client disconnected." << std::endl;
-						delete_socket_events(socket_fd, kq);
-						close(socket_fd);
+						it->second.disconnect();
 						client_map.erase(it);
 						continue ;
 					}
 					it->second.appendRequestBuffer(message);
 					std::cout << "Request from client: " << std::endl << it->second.getRequestBuffer() << std::endl;
 					it->second.clearRequestBuffer();
-					disable_read(socket_fd, kq);
-					enable_write(socket_fd, kq);
 					it->second.changeClientState(PROCESSING);
 					it->second.appendResponseBuffer("Message received\r\n");
 					it->second.changeClientState(SENDING);
@@ -115,8 +93,6 @@ int	main()
 				write(socket_fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
 				it->second.clearResponseBuffer();
 				it->second.changeClientState(READING);
-				disable_write(socket_fd, kq);
-				enable_read(socket_fd, kq);
 			}
 		}
 	}

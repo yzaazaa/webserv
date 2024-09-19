@@ -1,6 +1,8 @@
 #pragma once
 
+#include <sys/event.h>
 #include <iostream>
+#include <unistd.h>
 
 enum state
 {
@@ -17,9 +19,15 @@ class	Client
 		std::string	response_buffer;
 		state		client_state;
 		int			socket;
+		bool		read_event;
+		bool		write_event;
+		int			kq;
+
+		void		modifyEvent(short filter, u_short action);
+		void		registerClientSocket();
 	public:
 		Client();
-		Client(int socket);
+		Client(int socket, int kq);
 		Client(const Client &client);
 		Client	&operator=(const Client &rhs);
 		~Client();
@@ -35,4 +43,12 @@ class	Client
 		int			getResponseLen();
 		void		clearRequestBuffer();
 		void		clearResponseBuffer();
+		void		enableWriteEvent();
+		void		enableReadEvent();
+		void		disableWriteEvent();
+		void		disableReadEvent();
+		void		deleteClientEvents();
+		bool		getReadEvent();
+		bool		getWriteEvent();
+		void		disconnect();
 };
