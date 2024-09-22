@@ -6,16 +6,19 @@
 /// *** Functions *** ///
 #pragma region Functions
 
+// test function!!
 void Request::print_request() const {
-        std::cout << "Method: " << method << std::endl;
-        std::cout << "URI: " << uri << std::endl;
-        std::cout << "HTTP Version: " << http_version << std::endl;
-        std::cout << "Headers:" << std::endl;
-        for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
-            std::cout << it->first << ": " << it->second << std::endl;
-        }
-        std::cout << "Body: " << body << std::endl;
-    }
+	std::cout << "***************************************************" << std::endl;
+	std::cout << "Method: " << method << std::endl;
+	std::cout << "URI: " << uri << std::endl;
+	std::cout << "HTTP Version: " << http_version << std::endl;
+	std::cout << "Headers:" << std::endl;
+	for (std::map<std::string, std::string>::const_iterator it = headers.begin(); it != headers.end(); ++it) {
+		std::cout << it->first << ": " << it->second << std::endl;
+	}
+	std::cout << "Body: " << body << std::endl;
+	std::cout << "***************************************************" << std::endl;
+}
 
 bool	Request::parse_request_line(const std::string& line)
 {

@@ -24,8 +24,8 @@ class	Client
 		bool		read_event;
 		bool		write_event;
 		int			kq;
-		std::string method;
-    	std::string path;
+		// std::string method;
+    	// std::string path;
 		Request		request;
 
 		void		modifyEvent(short filter, u_short action);
@@ -75,16 +75,16 @@ class	Client
   	 	}
 
     	void handleRequest() {
-			if (method == "GET") {
+			if (request.method == "GET") {
 				// Simple response for GET request
 				appendResponseBuffer("HTTP/1.1 200 OK\r\n");
 				appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
 				appendResponseBuffer("Hello, World!\r\n");
-			} else if (method == "POST") {
+			} else if (request.method == "POST") {
 				appendResponseBuffer("HTTP/1.1 200 OK\r\n");
 				appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
 				appendResponseBuffer("POST data received\r\n");
-			} else if (method == "DELETE") {
+			} else if (request.method == "DELETE") {
 				appendResponseBuffer("HTTP/1.1 200 OK\r\n");
 				appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
 				appendResponseBuffer("Resource deleted\r\n");

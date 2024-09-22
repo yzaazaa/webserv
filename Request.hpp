@@ -24,15 +24,6 @@ class Request
 		bool	parse_request_line(const std::string& line);
 		bool	parse_header(const std::string& line);
 		void	print_request() const; // test function
-
-		// class BadRequest : public std::exception
-		// {
-		// 	virtual const char* what() const throw()
-		// 	{
-		// 		return ("Bad Request");
-		// 	}
-		// };
-		// Destructor
 		~Request();
 	private:
 
