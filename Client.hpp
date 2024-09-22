@@ -4,6 +4,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include "Request.hpp"
 
 enum state
 {
@@ -25,6 +26,7 @@ class	Client
 		int			kq;
 		std::string method;
     	std::string path;
+		Request		request;
 
 		void		modifyEvent(short filter, u_short action);
 		void		registerClientSocket();
@@ -55,19 +57,21 @@ class	Client
 		bool		getWriteEvent();
 		void		disconnect();
 		void parseRequest() {
-			std::istringstream request_stream(request_buffer);
-			std::string request_line;
-			std::getline(request_stream, request_line);
-			std::istringstream line_stream(request_line);
+			request.parse_request(request_buffer);
+			request.print_request();
+			// std::istringstream request_stream(request_buffer);
+			// std::string request_line;
+			// std::getline(request_stream, request_line);
+			// std::istringstream line_stream(request_line);
 
-			// Parse method and path
-			line_stream >> method >> path;
+			// // Parse method and path
+			// line_stream >> method >> path;
 
-			// Trim any trailing newlines or whitespace from path
-			path.erase(std::remove(path.begin(), path.end(), '\r'), path.end());
-			path.erase(std::remove(path.begin(), path.end(), '\n'), path.end());
+			// // Trim any trailing newlines or whitespace from path
+			// path.erase(std::remove(path.begin(), path.end(), '\r'), path.end());
+			// path.erase(std::remove(path.begin(), path.end(), '\n'), path.end());
 
-			std::cout << "Parsed request: Method=" << method << " Path=" << path << std::endl;
+			// std::cout << "Parsed request: Method=" << method << " Path=" << path << std::endl;
   	 	}
 
     	void handleRequest() {

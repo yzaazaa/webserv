@@ -1,8 +1,8 @@
 NAME = webserv
 
-SRCS = Client.cpp main.cpp
+SRCS = Client.cpp main.cpp Request.cpp
 
-HEADERS = Client.hpp
+HEADERS = Client.hpp Request.hpp
 
 OBJS = ${SRCS:.cpp=.o}
 

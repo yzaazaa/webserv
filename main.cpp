@@ -28,7 +28,7 @@ int	main()
 	setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, (void *)&opt, sizeof(opt));
 	struct sockaddr_in	server_address;
 	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(8080);
+	server_address.sin_port = htons(6969);
 	inet_pton(AF_INET, "0.0.0.0", &server_address.sin_addr);
 	std::cout << "Setting up server config." << std::endl;
 	bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address));
@@ -83,7 +83,8 @@ int	main()
 					}
 					it->second.appendRequestBuffer(message);
 					std::cout << "Request from client: " << std::endl << it->second.getRequestBuffer() << std::endl;
-					it->second.parseRequest();
+					if(it->second.getRequestBuffer().find("\n\n"))
+						it->second.parseRequest();
 					it->second.clearRequestBuffer();
 					it->second.changeClientState(PROCESSING);
 					it->second.handleRequest();
