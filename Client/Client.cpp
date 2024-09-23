@@ -171,5 +171,5 @@ void	Client::readRequest(Server &server)
 	if (bytes_read <= 0)
 		server.disconnectClient(*this);
 	appendRequestBuffer(message);
-	std::cout << "Request from client: " << std::endl << request_buffer << std::endl;
+	// std::cout << "Request from client: " << std::endl << request_buffer << std::endl;
 }
