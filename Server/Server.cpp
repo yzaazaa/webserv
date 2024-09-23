@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 # include "Server.hpp"
+#include "../Client/Client.hpp"
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -91,6 +92,59 @@ void	Server::ConnectSocket(int socketFd, struct sockaddr * address, int addressL
 	
 	if (listen(socketFd, SOMAXCONN) < 0)
 		throw std::runtime_error("Socket listen failed.");
+}
+
+void	Server::registerServerSockets(int kq)
+{
+	for (SocketEntryIterator it = _socketEntrys.begin(); it != _socketEntrys.end(); it++)
+	{
+		it->second.registerServerSocket(kq);
+	}
+}
+
+ClientMapIterator	Server::findClient(int fd)
+{
+	return _clientMap.find(fd);
+}
+
+void	Server::disconnectClient(ClientMapIterator it)
+{
+	std::cout << "Client disconnected." << std::endl;
+	it->second.disconnect();
+	_clientMap.erase(it);
+}
+
+void	Server::disconnectClient(Client &client)
+{
+	std::cout << "Client disconnected." << std::endl;
+	client.disconnect();
+	_clientMap.erase(_clientMap.find(client.getClientSocket()));
+}
+
+SocketEntryIterator	Server::findServer(int fd)
+{
+	return _socketEntrys.find(fd);
+}
+
+SocketEntryIterator	Server::getServerMapEnd()
+{
+	return _socketEntrys.end();
+}
+
+void	Server::acceptNewClient(int fd, int kq)
+{
+	int	client_socket = accept(fd, (struct sockaddr *)NULL, NULL);
+	Client	new_client(client_socket, kq);
+	_clientMap[client_socket] = new_client;
+	std::cout << "New client connected." << std::endl;
+}
+
+void	Server::sendResponse(Client &client)
+{
+	std::cout << "Sending response: " << std::endl << client.getResponseBuffer() << std::endl;
+	write(client.getClientSocket(), client.getResponseBuffer().c_str(), client.getResponseLen());
+	client.clearResponseBuffer();
+	disconnectClient(client);
 }
 
 #pragma endregion

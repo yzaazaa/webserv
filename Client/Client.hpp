@@ -4,6 +4,8 @@
 #include <iostream>
 #include <unistd.h>
 #include <sstream>
+#include <fcntl.h>
+#include "../Server/Server.hpp"
 
 enum state
 {
@@ -35,7 +37,6 @@ class	Client
 		Client	&operator=(const Client &rhs);
 		~Client();
 
-		void		setClientSocket(int socket);
 		int			getClientSocket();
 		void		changeClientState(state state);
 		state		&getClientState();
@@ -54,6 +55,8 @@ class	Client
 		bool		getReadEvent();
 		bool		getWriteEvent();
 		void		disconnect();
+		void		setNonBlock();
+		void		readRequest(Server &server);
 		void parseRequest() {
 			std::istringstream request_stream(request_buffer);
 			std::string request_line;

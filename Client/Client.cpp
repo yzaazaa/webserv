@@ -1,10 +1,12 @@
 #include "Client.hpp"
+#include <sys/fcntl.h>
 
 Client::Client() : request_buffer(""), response_buffer(""), client_state(READING), socket(-1), read_event(0), write_event(0), kq(-1) {}
 
 Client::Client(int socket, int kq) : request_buffer(""), response_buffer(""), client_state(READING), socket(socket), read_event(0), write_event(0), kq(kq)
 {
-	this->registerClientSocket();
+	setNonBlock();
+	registerClientSocket();
 }
 
 Client::Client(const Client &client)
@@ -23,11 +25,6 @@ Client  &Client::operator=(const Client &rhs)
 }
 
 Client::~Client() {}
-
-void	Client::setClientSocket(int socket)
-{
-	this->socket = socket;
-}
 
 int		Client::getClientSocket(void)
 {
@@ -150,4 +147,29 @@ void	Client::disconnect()
 {
 	deleteClientEvents();
 	close(socket); 
+}
+
+void	Client::setNonBlock()
+{
+	int	flags = fcntl(socket, F_GETFL, 0);
+	if (flags == -1)
+	{
+		std::cerr << "Failed to get fd flags." << std::endl;
+		return ;
+	}
+	if (fcntl(socket, F_SETFL, flags | O_NONBLOCK) == -1)
+	{
+		std::cerr << "Failed to set fd to non blocking mode." << std::endl;
+		return ;
+	}
+}
+
+void	Client::readRequest(Server &server)
+{
+	char	message[1024];
+	size_t	bytes_read = read(socket, message, 1024);
+	if (bytes_read <= 0)
+		server.disconnectClient(*this);
+	appendRequestBuffer(message);
+	std::cout << "Request from client: " << std::endl << request_buffer << std::endl;
 }

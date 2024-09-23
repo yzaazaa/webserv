@@ -14,6 +14,7 @@
 # include <unistd.h>
 # include <map>
 # include "../ServerInstance/ServerInstance.hpp"
+#include <sys/event.h>
 
 
 struct	SocketEntry
@@ -27,6 +28,12 @@ struct	SocketEntry
 		SocketType(socketType), SocketProtocol(socketProtocol),
 		Info(info)
 	{ }
+	void	registerServerSocket(int kq)
+	{
+		struct kevent evSet;
+		EV_SET(&evSet, SocketFd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
+		kevent(kq, &evSet, 1, NULL, 0, NULL);
+	}
 
 	int	SocketFd;
 	int	SocketDomain;
@@ -39,10 +46,16 @@ struct	SocketEntry
 
 typedef	std::map<int, SocketEntry>::iterator SocketEntryIterator;
 
+class	Client;
+
+typedef	std::map<int, Client>::iterator ClientMapIterator;
+
+
 class	Server
 {
 	private:
 		std::map<int, SocketEntry> _socketEntrys;
+		std::map<int, Client> _clientMap;
 
 		/// @brief Adds a ServerInstance to the SocketEntry if not already present.
 		void	AddServerInstance(const ServerInstance& serverInstance, int socketFd);
@@ -56,9 +69,18 @@ class	Server
 		Server& operator=(const Server& other);
 
 		// Functions
-		SocketEntry&	CreateSocket(const ServerInstance& instance, SocketEntry socketEntry);
-		bool			IsConnected(const ServerInstance& instance, const ListenInfo& listenInfo);
-		void			ConnectSocket(int socketFd, struct sockaddr * address, int addressLen);
+		SocketEntry&		CreateSocket(const ServerInstance& instance, SocketEntry socketEntry);
+		bool				IsConnected(const ServerInstance& instance, const ListenInfo& listenInfo);
+		void				ConnectSocket(int socketFd, struct sockaddr * address, int addressLen);
+		void				registerServerSockets(int kq);
+		ClientMapIterator	findClient(int fd);
+		SocketEntryIterator	findServer(int fd);
+		void				disconnectClient(ClientMapIterator it);
+		void				disconnectClient(Client &client);
+		SocketEntryIterator	getServerMapEnd();
+		void				acceptNewClient(int fd, int kq);
+		void				sendResponse(Client &client);				
+
 
 		// Destructor
 		~Server();
