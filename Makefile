@@ -19,8 +19,8 @@ CFLAGS = -Wall -Wextra -Werror -std=c++98
 NAME = webserv
 OBJ_DIR = objects
 
-MANDATORY_FILES = Mandatory/main.cpp
-MANDATORY_HEADER_FILES = 
+MANDATORY_FILES = Mandatory/main.cpp Mandatory/Client.cpp
+MANDATORY_HEADER_FILES = Mandatory/Client.hpp
 
 PARSER_FILES = Parser/Parser.cpp Parser/Tokenizer.cpp Parser/Validator.cpp Parser/ErrorDispatcher.cpp \
 						Parser/DirectiveMapper.cpp
@@ -54,12 +54,7 @@ $(OBJ_DIR)/%.o : %.cpp $(MANDATORY_HEADER_FILES) $(PARSER_HEADER_FILES) $(SERVER
 clean :
 	rm -rf $(OBJ_DIR)
 
-
 fclean : clean
 	rm -rf $(NAME)
 
 re : fclean all
-
-.PHONY : clean fclean all
-
-.SILENT : $(NAME) clean fclean all ${OBJs}
