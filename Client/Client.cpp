@@ -4,7 +4,7 @@
 
 Client::Client() : request_buffer(""), response_buffer(""), client_state(READING), socket(-1), kq(-1) {}
 
-Client::Client(int socket, int kq) : request_buffer(""), response_buffer(""), client_state(READING), socket(socket), kq(kq) {}
+Client::Client(int socket, int kq, int serverFd) : request_buffer(""), response_buffer(""), client_state(READING), socket(socket), kq(kq), serverFd(serverFd) {}
 
 Client::Client(const Client &client)
 {
@@ -18,6 +18,7 @@ Client  &Client::operator=(const Client &rhs)
 	this->response_buffer = rhs.response_buffer;
 	this->socket = rhs.socket;
 	this->kq = rhs.kq;
+	this->serverFd = rhs.serverFd;
 	return (*this);
 }
 

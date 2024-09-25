@@ -20,16 +20,18 @@ enum state
 class	Client
 {
 	private:
+		ServerInstance* instance;
 		std::string	request_buffer;
 		std::string	response_buffer;
 		state		client_state;
 		int			socket;
 		int			kq;
 		Request		request;
+		int			serverFd;
 
 	public:
 		Client();
-		Client(int socket, int kq);
+		Client(int socket, int kq, int serverFd);
 		Client(const Client &client);
 		Client	&operator=(const Client &rhs);
 		~Client();

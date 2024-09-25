@@ -114,7 +114,7 @@ void	Server::OnNewClientDetected(int kq, int serverFd)
 	{
 		// Register the client socket with kqueue for readability
 		KqueueUtils::RegisterEvents(kq, client_fd);
-		Client	new_client(client_fd, kq);
+		Client	new_client(client_fd, kq, serverFd);
 		_clientMap[client_fd] = new_client;
 		std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << std::endl;
 	}
@@ -134,19 +134,12 @@ void	Server::OnFileDescriptorReadyForRead(int fd)
 	ClientMapIterator	it = _clientMap.find(fd);
 	if (it != _clientMap.end())
 	{
-		try
-		{
-			it->second.readRequest(*this);
-			it->second.parseRequest();
-			it->second.clearRequestBuffer();
-			it->second.changeClientState(PROCESSING);
-			it->second.handleRequest();
-			it->second.changeClientState(SENDING);
-		}
-		catch (std::exception &e)
-		{
-			std::cerr << e.what() << std::endl;
-		}
+		it->second.readRequest(*this);
+		it->second.parseRequest();
+		it->second.clearRequestBuffer();
+		it->second.changeClientState(PROCESSING);
+		it->second.handleRequest();
+		it->second.changeClientState(SENDING);
 	}
 	else
 		throw std::runtime_error("Error retrieving client data.");
@@ -158,16 +151,9 @@ void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
 	ClientMapIterator	it = _clientMap.find(fd);
 	if (it != _clientMap.end())
 	{
-		try
-		{
-			write(fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
-			it->second.clearResponseBuffer();
-			OnClientDisconnected(kq, fd);
-		}
-		catch (std::exception &e)
-		{
-			std::cerr << e.what() << std::endl;
-		}
+		write(fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
+		it->second.clearResponseBuffer();
+		OnClientDisconnected(kq, fd);
 	}
 	else
 		throw std::runtime_error("Error retrieving client data.");
