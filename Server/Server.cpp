@@ -156,9 +156,21 @@ void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
 {
 	std::cout << "File descriptor: " << fd << " ready for write." << std::endl;
 	ClientMapIterator	it = _clientMap.find(fd);
-	write(fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
-	it->second.clearResponseBuffer();
-	OnClientDisconnected(kq, fd);
+	if (it != _clientMap.end())
+	{
+		try
+		{
+			write(fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
+			it->second.clearResponseBuffer();
+			OnClientDisconnected(kq, fd);
+		}
+		catch (std::exception &e)
+		{
+			std::cerr << e.what() << std::endl;
+		}
+	}
+	else
+		throw std::runtime_error("Error retrieving client data.");
 }
 
 #pragma endregion
