@@ -82,3 +82,30 @@ void	Client::readRequest(Server &server)
 		server.OnClientDisconnected(kq, socket);
 	appendRequestBuffer(message);
 }
+
+void 	Client::parseRequest()
+{
+	request.parse_request(request_buffer);
+	request.print_request();
+}
+
+void	Client::handleRequest() {
+	if (request.method == "GET") {
+		// Simple response for GET request
+		appendResponseBuffer("HTTP/1.1 200 OK\r\n");
+		appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
+		appendResponseBuffer("Hello, World!\r\n");
+	} else if (request.method == "POST") {
+		appendResponseBuffer("HTTP/1.1 200 OK\r\n");
+		appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
+		appendResponseBuffer("POST data received\r\n");
+	} else if (request.method == "DELETE") {
+		appendResponseBuffer("HTTP/1.1 200 OK\r\n");
+		appendResponseBuffer("Content-Type: text/plain\r\n\r\n");
+		appendResponseBuffer("Resource deleted\r\n");
+	} else {
+		// Unsupported method
+		appendResponseBuffer("HTTP/1.1 405 Method Not Allowed\r\n");
+		appendResponseBuffer("Allow: GET, POST, DELETE\r\n\r\n");
+	}
+}
