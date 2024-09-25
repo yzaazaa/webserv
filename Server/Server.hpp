@@ -14,7 +14,12 @@
 # include <unistd.h>
 # include <map>
 # include "../ServerInstance/ServerInstance.hpp"
-#include <sys/event.h>
+# include <sys/types.h>
+# include <sys/event.h>
+# include <cerrno>
+# include <iostream>
+# include "../KqueueUtils/KqueueUtils.hpp"
+# include <unistd.h>
 
 
 struct	SocketEntry
@@ -28,12 +33,6 @@ struct	SocketEntry
 		SocketType(socketType), SocketProtocol(socketProtocol),
 		Info(info)
 	{ }
-	void	registerServerSocket(int kq)
-	{
-		struct kevent evSet;
-		EV_SET(&evSet, SocketFd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, NULL);
-		kevent(kq, &evSet, 1, NULL, 0, NULL);
-	}
 
 	int	SocketFd;
 	int	SocketDomain;
@@ -44,18 +43,18 @@ struct	SocketEntry
 	std::vector<ServerInstance> ListeningServers;
 };
 
-typedef	std::map<int, SocketEntry>::iterator SocketEntryIterator;
-
 class	Client;
 
+typedef	std::map<int, SocketEntry> SocketEntryDef;
+typedef	std::map<int, SocketEntry>::iterator SocketEntryIterator;
 typedef	std::map<int, Client>::iterator ClientMapIterator;
 
 
 class	Server
 {
 	private:
-		std::map<int, SocketEntry> _socketEntrys;
-		std::map<int, Client> _clientMap;
+		std::map<int, SocketEntry>	_socketEntrys;
+		std::map<int, Client>		_clientMap;
 
 		/// @brief Adds a ServerInstance to the SocketEntry if not already present.
 		void	AddServerInstance(const ServerInstance& serverInstance, int socketFd);
@@ -68,19 +67,33 @@ class	Server
 		// Operators
 		Server& operator=(const Server& other);
 
-		// Functions
-		SocketEntry&		CreateSocket(const ServerInstance& instance, SocketEntry socketEntry);
-		bool				IsConnected(const ServerInstance& instance, const ListenInfo& listenInfo);
-		void				ConnectSocket(int socketFd, struct sockaddr * address, int addressLen);
-		void				registerServerSockets(int kq);
-		ClientMapIterator	findClient(int fd);
-		SocketEntryIterator	findServer(int fd);
-		void				disconnectClient(ClientMapIterator it);
-		void				disconnectClient(Client &client);
-		SocketEntryIterator	getServerMapEnd();
-		void				acceptNewClient(int fd, int kq);
-		void				sendResponse(Client &client);				
+#pragma region Functions
 
+		/// *** Server Initialization Functions *** ///
+		SocketEntry&	CreateSocket(const ServerInstance& instance, SocketEntry socketEntry);
+		bool			IsConnected(const ServerInstance& instance, const ListenInfo& listenInfo);
+		void			ConnectSocket(int socketFd, struct sockaddr * address, int addressLen);
+
+
+		/// *** Server Loop Functions *** ///
+		/// @brief Handles when a new client wants to connect
+		void	OnNewClientDetected(int kq, int serverFd);
+		/// @brief Handles when a client disconnects
+		void	OnClientDisconnected(int kq, int fd);
+		/// @brief Handles when a file descriptor is ready to be read from
+		void	OnFileDescriptorReadyForRead(int fd);
+		/// @brief Handles when a file descriptor is ready to be written into
+		void	OnFileDescriptorReadyForWrite(int kq, int fd);
+	
+
+		/// *** Utility Functions *** ///
+		/// @brief Returns true if the file descriptor belongs to a server listening socket
+		bool	IsFileDescriptorServerSocket(int fd);
+
+#pragma endregion
+
+		// Getters
+		SocketEntryDef& GetSocketEntrys();
 
 		// Destructor
 		~Server();

@@ -6,76 +6,83 @@
 /*   By: yzirri <yzirri@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 23:06:39 by yzirri            #+#    #+#             */
-/*   Updated: 2024/09/23 18:51:19 by yzirri           ###   ########.fr       */
+/*   Updated: 2024/09/25 09:01:26 by yzirri           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 # include "../Parser/Parser.hpp"
 # include "../Server/Server.hpp"
 # include "../Server/ServerInitializer.hpp"
-#include <cstddef>
-# include <cstdlib>
-#include <sys/event.h>
 # include "../Debug/Debug.hpp"
-#include "../Client/Client.hpp"
-
-# define MAX_EVENTS SOMAXCONN
+# include <cerrno>
+# include <cstddef>
+# include <cstdlib>
+#include <exception>
+# include <iostream>
+#include <iterator>
+# include <unistd.h>
+# include <sstream>
+# include <fcntl.h>
+# include <sys/types.h>
+# include <sys/event.h>
+# include <sys/time.h>
+# include "../KqueueUtils/KqueueUtils.hpp"
 
 int	main(int argc, char **argv)
 {
+	Server	server;
+	int		eventCount;
+	int		kq;
+	int		fd;
+
 	try
 	{
 		Parser parser(argc, argv);
-		Server server;
 		//PrintParsedServer(parser);
 		ServerInitializer serverInitializer(server, parser);
-		int	kq = kqueue();
-		if (kq == -1)
-		{
-			perror("webserv: ");
-			return (1);
-		}
-		server.registerServerSockets(kq);
-		struct kevent	evList[MAX_EVENTS];
-		while (667)
-		{
-			int nev = kevent(kq, NULL, 0, evList, sizeof(evList), NULL);
-			if (nev == -1)
-			{
-				perror("webserv: ");
-				close(kq);
-				return (1);
-			}
-			for (int i = 0; i < nev; i++)
-			{
-				int	socket_fd = evList[i].ident;
-				ClientMapIterator it= server.findClient(socket_fd);
-				if (evList[i].flags & EV_EOF)
-					server.disconnectClient(it);
-				else if (evList[i].filter == EVFILT_READ)
-				{
-					if (server.findServer(socket_fd) != server.getServerMapEnd())
-						server.acceptNewClient(socket_fd, kq);
-					else if (it->second.getClientState() == READING)
-					{
-						it->second.readRequest(server);
-						it->second.parseRequest();
-						it->second.clearRequestBuffer();
-						it->second.changeClientState(PROCESSING);
-						it->second.handleRequest();
-						it->second.changeClientState(SENDING);
-					}
-				}
-				else if (evList[i].filter == EVFILT_WRITE && it->second.getClientState() == SENDING)
-					server.sendResponse(it->second);
-			}
-		}
-		close(kq);
+		kq = KqueueUtils::PrepareKqueue(server);
 	}
 	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;
 		return (EXIT_FAILURE);
 	}
+
+	
+	struct kevent	evList[SOMAXCONN];
+	while (667)
+	{
+		if ((eventCount = KqueueUtils::WaitForEvent(kq, evList, SOMAXCONN)) == -1)
+			continue;
+		
+		for (int i = 0; i < eventCount; i++)
+		{
+
+			try
+			{
+				fd = evList[i].ident;
+				// Action happend on a server listening socket
+				if (server.IsFileDescriptorServerSocket(fd))
+					server.OnNewClientDetected(kq, fd);
+				
+				// Client Disconnected
+				else if (evList[i].flags & EV_EOF)
+					server.OnClientDisconnected(kq, fd);
+				
+				// Client Can be Read
+				else if (evList[i].filter == EVFILT_READ)
+					server.OnFileDescriptorReadyForRead(fd);
+				
+				// Client can be written to
+				else if (evList[i].filter == EVFILT_WRITE)
+					server.OnFileDescriptorReadyForWrite(kq, fd);
+			}
+			catch (const std::exception& e)
+			{
+				std::cerr << e.what() << std::endl; //Don't let the server crash, just log the error and keep going
+			}
+		}
+	}
+	close(kq);
 	return (EXIT_SUCCESS);
 }

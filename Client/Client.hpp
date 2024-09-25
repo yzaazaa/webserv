@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include "../Server/Server.hpp"
 #include "../Request/Request.hpp"
+#include <sys/stat.h>
 
 enum state
 {
@@ -23,13 +24,9 @@ class	Client
 		std::string	response_buffer;
 		state		client_state;
 		int			socket;
-		bool		read_event;
-		bool		write_event;
 		int			kq;
 		Request		request;
 
-		void		modifyEvent(short filter, u_short action);
-		void		registerClientSocket();
 	public:
 		Client();
 		Client(int socket, int kq);
@@ -37,7 +34,6 @@ class	Client
 		Client	&operator=(const Client &rhs);
 		~Client();
 
-		int			getClientSocket();
 		void		changeClientState(state state);
 		state		&getClientState();
 		void		appendRequestBuffer(char *msg);
@@ -47,15 +43,6 @@ class	Client
 		int			getResponseLen();
 		void		clearRequestBuffer();
 		void		clearResponseBuffer();
-		void		enableWriteEvent();
-		void		enableReadEvent();
-		void		disableWriteEvent();
-		void		disableReadEvent();
-		void		deleteClientEvents();
-		bool		getReadEvent();
-		bool		getWriteEvent();
-		void		disconnect();
-		void		setNonBlock();
 		void		readRequest(Server &server);
 		void parseRequest() {
 			request.parse_request(request_buffer);
