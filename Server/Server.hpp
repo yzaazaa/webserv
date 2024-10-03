@@ -34,7 +34,7 @@ struct	SocketEntry
 		Info(info)
 	{ }
 
-	int	SocketFd;
+	int	SocketFd; 
 	int	SocketDomain;
 	int	SocketType;
 	int	SocketProtocol;
@@ -81,7 +81,7 @@ class	Server
 		/// @brief Handles when a client disconnects
 		void	OnClientDisconnected(int kq, int fd);
 		/// @brief Handles when a file descriptor is ready to be read from
-		void	OnFileDescriptorReadyForRead(int fd);
+		void	OnFileDescriptorReadyForRead(int kq, int fd);
 		/// @brief Handles when a file descriptor is ready to be written into
 		void	OnFileDescriptorReadyForWrite(int kq, int fd);
 	

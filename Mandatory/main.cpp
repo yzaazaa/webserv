@@ -6,7 +6,7 @@
 /*   By: yzirri <yzirri@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2024/09/14 23:06:39 by yzirri            #+#    #+#             */
-/*   Updated: 2024/09/25 09:01:26 by yzirri           ###   ########.fr       */
+/*   Updated: 2024/10/02 20:23:02 by yzirri           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -71,7 +71,7 @@ int	main(int argc, char **argv)
 				
 				// Client Can be Read
 				else if (evList[i].filter == EVFILT_READ)
-					server.OnFileDescriptorReadyForRead(fd);
+					server.OnFileDescriptorReadyForRead(kq, fd);
 				
 				// Client can be written to
 				else if (evList[i].filter == EVFILT_WRITE)

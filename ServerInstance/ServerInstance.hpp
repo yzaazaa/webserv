@@ -158,10 +158,11 @@ struct HttpInstance
 
 struct LocationInstance
 {
-	LocationInstance()
+	LocationInstance() : IsExactMatch(false)
 	{	}
-	LocationInstance(const std::string& arg) : PathArg(arg)
+	LocationInstance(bool isExactMatch, const std::string& arg) : IsExactMatch(isExactMatch), PathArg(arg)
 	{	}
+	bool	IsExactMatch;
 	std::string			PathArg;
 	ClientMaxBodySize	ClientMaxBody;
 	ErrorPageData		ErrorPages;

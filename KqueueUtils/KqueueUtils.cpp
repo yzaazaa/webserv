@@ -99,6 +99,18 @@ void	KqueueUtils::EnableEvent(int kq, int fd, event event)
 }
 
 
+void	KqueueUtils::EnableReading(int kq, int fd)
+{
+	DisableEvent(kq, fd, WRITE);
+	EnableEvent(kq, fd, READ);
+}
+
+void	KqueueUtils::EnableWriting(int kq, int fd)
+{
+	DisableEvent(kq, fd, READ);
+	EnableEvent(kq, fd, WRITE);
+}
+
 #pragma endregion
 
 

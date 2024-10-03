@@ -11,9 +11,9 @@
 /* ************************************************************************** */
 
 # include "Server.hpp"
-# include "../Client/Client.hpp"
-#include <exception>
-#include <stdexcept>
+# include "../Http/Client.hpp"
+# include <exception>
+# include <stdexcept>
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -24,7 +24,6 @@ Server::Server()
 }
 
 #pragma endregion
-
 
 /// *** Server Initialization Functions *** ///
 #pragma region Server Initialization Functions
@@ -97,7 +96,6 @@ void	Server::ConnectSocket(int socketFd, struct sockaddr * address, int addressL
 
 #pragma endregion
 
-
 /// *** Server Loop Functions *** ///
 #pragma region Server Loop Functions
 
@@ -110,39 +108,31 @@ void	Server::OnNewClientDetected(int kq, int serverFd)
 	client_len = sizeof(client_addr);
 	if ((client_fd = accept(serverFd, (struct sockaddr *)&client_addr, &client_len)) == -1)
 		KqueueUtils::ThrowErrnoException("Error accepting client");
-	else
-	{
-		// Register the client socket with kqueue for readability
-		KqueueUtils::RegisterEvents(kq, client_fd);
-		Client	new_client(client_fd, kq, serverFd);
-		_clientMap[client_fd] = new_client;
-		std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << std::endl;
-	}
+	
+	// Register the client socket with kqueue for readability
+	KqueueUtils::RegisterEvents(kq, client_fd); //TODO: improve this function, currently not clear what it does
+	Client	new_client(serverFd);
+	_clientMap[client_fd] = new_client;
+	std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << std::endl;
+	
 }
 
 void	Server::OnClientDisconnected(int kq, int fd)
 {
 	std::cout << "Client disconnected." << std::endl;
+	//TODO: call OnDisconnect int client
 	KqueueUtils::DeleteEvents(kq, fd);
 	close(fd);
 	_clientMap.erase(fd);
 }
 
-void	Server::OnFileDescriptorReadyForRead(int fd)
+void	Server::OnFileDescriptorReadyForRead(int kq, int fd)
 {
-	std::cout << "File descriptor: " << fd << " ready for read." << std::endl;
 	ClientMapIterator	it = _clientMap.find(fd);
 	if (it != _clientMap.end())
-	{
-		it->second.readRequest(*this);
-		it->second.parseRequest();
-		it->second.clearRequestBuffer();
-		it->second.changeClientState(PROCESSING);
-		it->second.handleRequest();
-		it->second.changeClientState(SENDING);
-	}
+		it->second.OnSocket_ReadyForRead(*this, kq, fd);
 	else
-		throw std::runtime_error("Error retrieving client data.");
+		throw std::runtime_error("Reading from files is not suported.");
 }
 
 void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
@@ -150,17 +140,12 @@ void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
 	std::cout << "File descriptor: " << fd << " ready for write." << std::endl;
 	ClientMapIterator	it = _clientMap.find(fd);
 	if (it != _clientMap.end())
-	{
-		write(fd, it->second.getResponseBuffer().c_str(), it->second.getResponseLen());
-		it->second.clearResponseBuffer();
-		OnClientDisconnected(kq, fd);
-	}
+		it->second.OnSocket_ReadyForWrite(*this, kq, fd);
 	else
-		throw std::runtime_error("Error retrieving client data.");
+		throw std::runtime_error("Writing to files is not supported.");
 }
 
 #pragma endregion
-
 
 /// *** Utility Functions *** ///
 #pragma region Utility Functions
@@ -178,7 +163,7 @@ bool	Server::IsFileDescriptorServerSocket(int fd)
 
 #pragma endregion
 
-
+/// *** region Getters / Setters *** ///
 #pragma region Getters / Setters
 
 SocketEntryDef&	Server::GetSocketEntrys()

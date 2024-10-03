@@ -234,11 +234,25 @@ void	DirectiveMapper::ParseRedirect(RedirectionData& redirectionData, TokenSeque
 
 void	DirectiveMapper::LocationMapper(SeqVectorIter& it, ServerInstance& instance, SeqVector& tokenSeqances)
 {
-	LocationInstance location(it->Arguments[0].Text);
+	std::ostringstream errorStream;
+	bool	isExactMatch = false;
+	std::string path = it->Arguments[0].Text;
+
+	if (it->Arguments.size() > 1)
+	{
+		if (it->Arguments[0].Text.size() != 1 || it->Arguments[0].Text[0] != '=')
+		{
+			errorStream << "Parse error: Invalid location modifier \"" << it->Arguments[0].Text << "\"";
+			errorStream << "\nIn (line: " << it->Directive.Line << ").";
+			throw std::runtime_error(errorStream.str());
+		}
+		isExactMatch = true;
+		path = it->Arguments[1].Text;
+	}
+
+	LocationInstance location(isExactMatch, path);
 	if (instance.Locations.find(location.PathArg) != instance.Locations.end())
 	{
-		std::ostringstream errorStream;
-
 		errorStream << "Parse error: Duplicate location \"" << location.PathArg << "\"";
 		errorStream << "\nIn (line: " << it->Directive.Line << ").";
 		throw std::runtime_error(errorStream.str());

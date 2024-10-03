@@ -46,4 +46,10 @@ class KqueueUtils
 
 		/// @brief Enables event
 		static void	EnableEvent(int kq, int fd, event event);
+
+		/// @brief Enables Reading and Disables Writing
+		static void	EnableReading(int kq, int fd);
+
+		/// @brief Enables Writing and Disables Reading
+		static void	EnableWriting(int kq, int fd);
 };
