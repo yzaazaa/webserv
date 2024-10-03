@@ -33,7 +33,13 @@ class	Client
 		void	OnSocket_ReadyForWrite(Server& server, int kq, int fd);
 		// void	OnFile_ReadyForWrite(int fd);
 
-		// void	OnRequestCompleted();
+		void	OnRequestCompleted();
+		bool	getAutoIndex();
+		bool	locationSupportUpload();
+		bool	isCgi();
+		void	methodGet();
+		void	methodPost();
+		void	methodDelete();
 		// void	OnDisconnect();
 
 		/// *** DEBUG *** ///

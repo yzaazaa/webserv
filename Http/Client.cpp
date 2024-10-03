@@ -8,6 +8,7 @@
 # include <string>
 # include <cstddef>
 # include <iostream>
+# include "FileUtils.hpp"
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -23,21 +24,164 @@ Client::Client(int serverFd) : ServerFd(serverFd), Location(NULL)
 
 #pragma endregion
 
+void	Client::methodDelete()
+{
+	if (FileUtils::pathNotFound(Request.uri.path))
+		return ; // 404 Not Found
+	if (FileUtils::isDirectory(Request.uri.path))
+	{
+		if (Request.uri.path.back() == '/')
+		{
+			// if (isCgi(Request.uri.path))
+			// 	doCgiStuff();
+			// else
+			// {
+					if (!FileUtils::deleteFolderContent(Request.uri.path))
+					{
+						if (FileUtils::hasWriteAccess(Request.uri.path))
+							return ; // 500 Internal server error
+						return ; // 403 Forbidden
+					}
+					return ; // 204 No Content
+			// }
+		}
+		return ; // 409 Conflict
+	}
+	// if (isCgi(Request.uri.path))
+	// 	doCgiStuff();
+	// else
+	// {
+		if (std::remove(Request.uri.path.c_str()))
+		{
+			if (FileUtils::hasWriteAccess(Request.uri.path))
+				return ; // 500 Internal server error
+			return ; // 403 Forbidden
+		}
+		return ; // 204 No Content
+		
+	// }
+}
+
+bool	Client::getAutoIndex()
+{
+	return Location->IsAutoIndex.IsDefined && Location->IsAutoIndex.IsAutoIndexOn;
+}
+
+bool	Client::locationSupportUpload()
+{
+	return false;
+}
+
+bool	Client::isCgi()
+{
+	std::string	extension = ".py";
+	int			extension_len = extension.length();
+	int			uri_len = Request.uri.path.length();
+	if (uri_len >= extension_len && !Request.uri.path.compare(uri_len - extension_len, extension_len, extension)
+		&& Location->CgiConfig.IsDefined)
+		return true;
+	return false;
+}
+
+void	Client::methodGet()
+{
+	if (FileUtils::pathNotFound(Request.uri.path))
+		return ; // 404 Not Found
+	if (FileUtils::isDirectory(Request.uri.path))
+	{
+		if (Request.uri.path.back() == '/')
+		{
+			if (FileUtils::dirHasIndexFiles(Request.uri.path))
+			{
+				// if (isCgi(Request.uri.path))
+				// 	doCgiStuff();
+				// else
+				// {
+						return ; // 200 OK (body = index file)
+				// }
+			}
+			if (getAutoIndex()) // Auto index true if on
+				return ; // 200 ok (return autoindex of directory (autoindex means loading page listing the directory entrys))
+			return ; // 403 Forbidden
+		}
+		return ; // 301 Moved Permanently (make a 301 redirection to Request uri with '/' added at the end)
+	}
+	if (FileUtils::hasReadAccess(Request.uri.path))
+	{
+		// if (isCgi(Request.uri.path))
+		// 	doCgiStuff();
+		// else
+		// {
+				return ; // 200 OK (body = index file)
+		// }
+	}
+	return ; // 403 Forbidden
+}
+
+void	Client::methodPost()
+{
+	if (locationSupportUpload())
+		return ; // 201 Created (and upload the post Request body)
+	else
+	{
+		if (FileUtils::pathNotFound(Request.uri.path))
+			return ; // 404 Not Found
+		if (FileUtils::isDirectory(Request.uri.path))
+		{
+			if (Request.uri.path.back() == '/')
+			{
+				if (FileUtils::dirHasIndexFiles(Request.uri.path))
+				{
+					// if (isCgi(Request.uri.path))
+					// 	doCgiStuff(); 
+					// else
+					// {
+							return ; // 403 Forbidden
+					// }
+				}
+				return ; // 403 Forbidden
+			}
+			return ; // 301 Moved Permanently (make a 301 redirection to Request uri with '/' added at the end)
+		}
+		// if (isCgi(Request.uri.path))
+		// 	doCgiStuff();
+		// else
+		// {
+				return ; // 403 Forbidden
+		// }
+	}
+}
+
+void	Client::OnRequestCompleted()
+{
+	if (Request.method == "get") {
+		methodGet();
+	} else if (Request.method == "post") {
+		methodPost();
+	} else if (Request.method == "delete") {
+		methodDelete();
+	}
+}
+
 void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 {
 	if (!Request.IsHeaderParsingDone)
 	{
 		if (!HeaderValidator::ReadAndParseHeader(*this, server, fd))
+		{
 			KqueueUtils::EnableWriting(kq, fd);
+			return;
+		}
 		else if (Request.IsHeaderParsingDone)
 		{
 			HeaderValidator::RemoveHeaderFromBuffer(Request);
-			KqueueUtils::EnableWriting(kq, fd); //TODO: remove this and when functions methds are implemented
-			TEST_PREPARE_RESPONSE();
+			// TEST_PREPARE_RESPONSE();
 		}
-		return;
+		else
+			return;
 	}
 	std::cout << "Body Parsing Not Yet Implemented" << std::endl;
+	OnRequestCompleted();
 }
 
 void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
@@ -54,7 +198,7 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 
 	write(fd, Response.Buffer.c_str(), Response.Buffer.length());
 	Response.Buffer.clear();
-	// request_buffer.clear();
+	// Request_buffer.clear();
 
 	if (Response.IsLastResponse)
 	{
@@ -63,7 +207,7 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 			server.OnClientDisconnected(kq, fd); //TODO: this needs to be something like, OnFinished or something, to make sure it doesnt conflict with client diconnecting
 			return;
 		}
-		// client has sent the last message for the given request, reset the request and wait for more
+		// client has sent the last message for the given Request, reset the Request and wait for more
 		Request.Reset();
 	}
 

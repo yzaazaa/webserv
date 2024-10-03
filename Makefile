@@ -28,10 +28,12 @@ KQUEUE_UTILS_HEADER_FILES = KqueueUtils/KqueueUtils.hpp
 
 HTTP_FILES = Http/Client.cpp \
 			Http/HeaderValidator/HeaderValidator.cpp \
-			Http/ResponseUtils/ResponseUtils.cpp
+			Http/ResponseUtils/ResponseUtils.cpp \
+			Http/FileUtils.cpp
 HTTP_HEADER_FILES = Http/Client.hpp Http/Request.hpp Http/Response.hpp \
 					Http/HeaderValidator/HeaderValidator.hpp \
-					Http/ResponseUtils/ResponseUtils.hpp
+					Http/ResponseUtils/ResponseUtils.hpp \
+					Http/FileUtils.hpp
 
 
 SRC_FILES = $(MANDATORY_FILES) $(PARSER_FILES) $(SERVER_FILES) $(SERVER_INStANCE_FILES) $(DEBUG_FILES) \
