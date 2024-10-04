@@ -1,4 +1,7 @@
 # include "ResponseUtils.hpp"
+# include "../Client.hpp"
+# include "../../Server/Server.hpp"
+# include <sys/fcntl.h>
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -90,7 +93,7 @@ void	ResponseUtils::MethodNotAllowed405_NoBody(Response& response)
 	response.CloseConnection = true;
 }
 
-void	ResponseUtils::MovedPermanently301_NoBody(Response& response, std::string& location)
+void	ResponseUtils::MovedPermanently301_NoBody(Response& response, std::string const &location)
 {
 	std::ostringstream	stream;
 
@@ -104,6 +107,58 @@ void	ResponseUtils::MovedPermanently301_NoBody(Response& response, std::string& 
 	response.CloseConnection = true;
 }
 
+void	ResponseUtils::Forbidden403_NoBody(Response& response)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 403 Forbidden" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = true;
+}
+
+void	ResponseUtils::Conflict409_NoBody(Response& response)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 409 Conflict" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = true;
+}
+
+void	ResponseUtils::NoContent204_NoBody(Response& response)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 204 No Content" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = true;
+}
+
+void	ResponseUtils::OK200(Response& response, Client& client, int kq, int socket, Server &server)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 200 OK" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = true;
+	int	fd = open(client.Request.uri.path.c_str(), O_RDONLY);
+	if (fd == -1)
+		return (ResponseUtils::InternalServerError500_NoBody(response), (void)0);
+	KqueueUtils::RegisterEvents(kq, fd, true);
+	server.addFd(fd, socket);
+}
 
 #pragma endregion
 

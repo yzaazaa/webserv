@@ -48,6 +48,7 @@ class	Client;
 typedef	std::map<int, SocketEntry> SocketEntryDef;
 typedef	std::map<int, SocketEntry>::iterator SocketEntryIterator;
 typedef	std::map<int, Client>::iterator ClientMapIterator;
+typedef	std::map<int, int>::iterator FdMapIterataor;
 
 
 class	Server
@@ -55,6 +56,7 @@ class	Server
 	private:
 		std::map<int, SocketEntry>	_socketEntrys;
 		std::map<int, Client>		_clientMap;
+		std::map<int, int>			_fdMap;
 
 		/// @brief Adds a ServerInstance to the SocketEntry if not already present.
 		void	AddServerInstance(const ServerInstance& serverInstance, int socketFd);
@@ -84,6 +86,8 @@ class	Server
 		void	OnFileDescriptorReadyForRead(int kq, int fd);
 		/// @brief Handles when a file descriptor is ready to be written into
 		void	OnFileDescriptorReadyForWrite(int kq, int fd);
+
+		void	addFd(int fd, int socket);
 	
 
 		/// *** Utility Functions *** ///
