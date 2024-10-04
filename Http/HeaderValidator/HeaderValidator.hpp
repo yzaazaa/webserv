@@ -6,7 +6,7 @@
 # include "../Client.hpp"
 
 #define URI_MAX_SIZE 2048
-#define HEADER_MAX_SIZE 8192
+#define HEADER_MAX_SIZE 9216
 
 class HeaderValidator
 {
