@@ -3,6 +3,7 @@
 #include <ostream>
 # include <stdexcept>
 # include <sys/fcntl.h>
+#include <sys/socket.h>
 # include <sys/stat.h>
 # include <sstream>
 # include <string>
@@ -33,33 +34,23 @@ void	Client::methodDelete()
 	{
 		if (Request.uri.path.back() == '/')
 		{
-			// if (isCgi(Request.uri.path))
-			// 	doCgiStuff();
-			// else
-			// {
-					if (!FileUtils::deleteFolderContent(Request.uri.path))
-					{
-						if (FileUtils::hasWriteAccess(Request.uri.path))
-							return (ResponseUtils::InternalServerError500_NoBody(this->Response), (void)0);
-						return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
-					}
-					return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
-			// }
+			if (!FileUtils::deleteFolderContent(Request.uri.path))
+			{
+				if (FileUtils::hasWriteAccess(Request.uri.path))
+					return (ResponseUtils::InternalServerError500_NoBody(this->Response), (void)0);
+				return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+			}
+			return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
 		}
 		return (ResponseUtils::Conflict409_NoBody(this->Response), (void)0);
 	}
-	// if (isCgi(Request.uri.path))
-	// 	doCgiStuff();
-	// else
-	// {
-		if (std::remove(Request.uri.path.c_str()))
-		{
-			if (FileUtils::hasWriteAccess(Request.uri.path))
-				return (ResponseUtils::InternalServerError500_NoBody(this->Response),(void)0);
-			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
-		}
-		return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
-	// }
+	if (std::remove(Request.uri.path.c_str()))
+	{
+		if (FileUtils::hasWriteAccess(Request.uri.path))
+			return (ResponseUtils::InternalServerError500_NoBody(this->Response),(void)0);
+		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+	}
+	return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
 }
 
 bool	Client::getAutoIndex()
@@ -118,12 +109,12 @@ void	Client::methodGet(int kq, int socket, Server& server)
 	return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 
-void	Client::methodPost(int kq, Server &server)
+void	Client::methodPost(int kq, int socket, Server &server)
 {
 	(void)kq;
 	(void)server;
 	if (locationSupportUpload())
-		return ; // 201 Created (and upload the post Request body)
+		return (ResponseUtils::Created201(Response, *this, kq, socket, server), (void)0);
 	else
 	{
 		if (FileUtils::pathNotFound(Request.uri.path))
@@ -159,7 +150,7 @@ void	Client::OnRequestCompleted(int kq, int socket, Server& server)
 	if (Request.method == "get") {
 		methodGet(kq, socket, server);
 	} else if (Request.method == "post") {
-		methodPost(kq, server);
+		methodPost(kq, socket, server);
 	} else if (Request.method == "delete") {
 		methodDelete();
 	}
@@ -220,6 +211,11 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 }
 
 void	Client::OnFile_ReadyForRead(int fd)
+{
+	(void)fd;
+}
+
+void	Client::OnFile_ReadyForWrite(int fd)
 {
 	(void)fd;
 }

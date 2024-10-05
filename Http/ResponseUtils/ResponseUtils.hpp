@@ -30,7 +30,8 @@ class ResponseUtils
 		static void	Conflict409_NoBody(Response& response);
 
 		static void	NoContent204_NoBody(Response& response);
-		static void	OK200(Response& response, Client& client, int kq, int socket, Server& server);
+		static void	OK200(Response& response, Client& client, int kq, int client_socket, Server& server);
+		static void	Created201(Response& response, Client& client, int kq, int client_socket, Server& server);
 		// Destructor
 		~ResponseUtils();
 };

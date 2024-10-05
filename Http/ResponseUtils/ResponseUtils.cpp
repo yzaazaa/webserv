@@ -143,7 +143,7 @@ void	ResponseUtils::NoContent204_NoBody(Response& response)
 	response.CloseConnection = true;
 }
 
-void	ResponseUtils::OK200(Response& response, Client& client, int kq, int socket, Server &server)
+void	ResponseUtils::OK200(Response& response, Client& client, int kq, int client_socket, Server &server)
 {
 	std::ostringstream	stream;
 
@@ -152,12 +152,31 @@ void	ResponseUtils::OK200(Response& response, Client& client, int kq, int socket
 
 	response.Buffer = stream.str();
 	response.IsLastResponse = true;
-	response.CloseConnection = true;
+	response.CloseConnection = false;
 	int	fd = open(client.Request.uri.path.c_str(), O_RDONLY);
 	if (fd == -1)
 		return (ResponseUtils::InternalServerError500_NoBody(response), (void)0);
 	KqueueUtils::RegisterEvents(kq, fd, true);
-	server.addFd(fd, socket);
+	server.addFd(fd, client_socket);
+}
+
+void	ResponseUtils::Created201(Response& response, Client& client, int kq, int client_socket, Server &server)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 200 OK" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = false;
+	int	fd = open(client.Request.uri.path.c_str(), O_WRONLY);
+	if (fd == -1)
+		return (ResponseUtils::InternalServerError500_NoBody(response), (void)0);
+	KqueueUtils::RegisterEvents(kq, fd);
+	KqueueUtils::DisableEvent(kq, fd, READ);
+	KqueueUtils::EnableEvent(kq, fd, WRITE);
+	server.addFd(fd, client_socket);
 }
 
 #pragma endregion
