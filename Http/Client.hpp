@@ -28,17 +28,17 @@ class	Client
 
 		
 		void	OnSocket_ReadyForRead(Server& server, int kq, int fd);
-		// void	OnFile_ReadyForRead(int fd);
+		void	OnFile_ReadyForRead(int fd);
 
 		void	OnSocket_ReadyForWrite(Server& server, int kq, int fd);
-		// void	OnFile_ReadyForWrite(int fd);
+		void	OnFile_ReadyForWrite(int fd);
 
-		void	OnRequestCompleted();
+		void	OnRequestCompleted(int kq, int socket, Server& server);
 		bool	getAutoIndex();
 		bool	locationSupportUpload();
 		bool	isCgi();
-		void	methodGet();
-		void	methodPost();
+		void	methodGet(int kq, int socekt, Server& server);
+		void	methodPost(int kq, int socket, Server& server);
 		void	methodDelete();
 		// void	OnDisconnect();
 

@@ -3,12 +3,14 @@
 #include <ostream>
 # include <stdexcept>
 # include <sys/fcntl.h>
+#include <sys/socket.h>
 # include <sys/stat.h>
 # include <sstream>
 # include <string>
 # include <cstddef>
 # include <iostream>
 # include "FileUtils.hpp"
+# include "ResponseUtils/ResponseUtils.hpp"
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -27,39 +29,28 @@ Client::Client(int serverFd) : ServerFd(serverFd), Location(NULL)
 void	Client::methodDelete()
 {
 	if (FileUtils::pathNotFound(Request.uri.path))
-		return ; // 404 Not Found
+		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
 	if (FileUtils::isDirectory(Request.uri.path))
 	{
 		if (Request.uri.path.back() == '/')
 		{
-			// if (isCgi(Request.uri.path))
-			// 	doCgiStuff();
-			// else
-			// {
-					if (!FileUtils::deleteFolderContent(Request.uri.path))
-					{
-						if (FileUtils::hasWriteAccess(Request.uri.path))
-							return ; // 500 Internal server error
-						return ; // 403 Forbidden
-					}
-					return ; // 204 No Content
-			// }
+			if (!FileUtils::deleteFolderContent(Request.uri.path))
+			{
+				if (FileUtils::hasWriteAccess(Request.uri.path))
+					return (ResponseUtils::InternalServerError500_NoBody(this->Response), (void)0);
+				return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+			}
+			return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
 		}
-		return ; // 409 Conflict
+		return (ResponseUtils::Conflict409_NoBody(this->Response), (void)0);
 	}
-	// if (isCgi(Request.uri.path))
-	// 	doCgiStuff();
-	// else
-	// {
-		if (std::remove(Request.uri.path.c_str()))
-		{
-			if (FileUtils::hasWriteAccess(Request.uri.path))
-				return ; // 500 Internal server error
-			return ; // 403 Forbidden
-		}
-		return ; // 204 No Content
-		
-	// }
+	if (std::remove(Request.uri.path.c_str()))
+	{
+		if (FileUtils::hasWriteAccess(Request.uri.path))
+			return (ResponseUtils::InternalServerError500_NoBody(this->Response),(void)0);
+		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+	}
+	return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
 }
 
 bool	Client::getAutoIndex()
@@ -83,10 +74,10 @@ bool	Client::isCgi()
 	return false;
 }
 
-void	Client::methodGet()
+void	Client::methodGet(int kq, int socket, Server& server)
 {
 	if (FileUtils::pathNotFound(Request.uri.path))
-		return ; // 404 Not Found
+		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
 	if (FileUtils::isDirectory(Request.uri.path))
 	{
 		if (Request.uri.path.back() == '/')
@@ -96,68 +87,59 @@ void	Client::methodGet()
 				// if (isCgi(Request.uri.path))
 				// 	doCgiStuff();
 				// else
-				// {
-						return ; // 200 OK (body = index file)
-				// }
+					return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 			}
 			if (getAutoIndex()) // Auto index true if on
-				return ; // 200 ok (return autoindex of directory (autoindex means loading page listing the directory entrys))
-			return ; // 403 Forbidden
+				return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
+			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 		}
-		return ; // 301 Moved Permanently (make a 301 redirection to Request uri with '/' added at the end)
+		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
 	}
 	if (FileUtils::hasReadAccess(Request.uri.path))
 	{
 		// if (isCgi(Request.uri.path))
 		// 	doCgiStuff();
 		// else
-		// {
-				return ; // 200 OK (body = index file)
-		// }
+			return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 	}
-	return ; // 403 Forbidden
+	return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 
-void	Client::methodPost()
+void	Client::methodPost(int kq, int socket, Server &server)
 {
 	if (locationSupportUpload())
-		return ; // 201 Created (and upload the post Request body)
-	else
+		return (ResponseUtils::Created201(Response, *this, kq, socket, server), (void)0);
+	if (FileUtils::pathNotFound(Request.uri.path))
+		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
+	if (FileUtils::isDirectory(Request.uri.path))
 	{
-		if (FileUtils::pathNotFound(Request.uri.path))
-			return ; // 404 Not Found
-		if (FileUtils::isDirectory(Request.uri.path))
+		if (Request.uri.path.back() == '/')
 		{
-			if (Request.uri.path.back() == '/')
+			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
-				if (FileUtils::dirHasIndexFiles(Request.uri.path))
-				{
-					// if (isCgi(Request.uri.path))
-					// 	doCgiStuff(); 
-					// else
-					// {
-							return ; // 403 Forbidden
-					// }
-				}
-				return ; // 403 Forbidden
+				// if (isCgi(Request.uri.path))
+				// 	doCgiStuff(); 
+				// else
+				// {
+						return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+				// }
 			}
-			return ; // 301 Moved Permanently (make a 301 redirection to Request uri with '/' added at the end)
+			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 		}
-		// if (isCgi(Request.uri.path))
-		// 	doCgiStuff();
-		// else
-		// {
-				return ; // 403 Forbidden
-		// }
+		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
 	}
+	// if (isCgi(Request.uri.path))
+	// 	doCgiStuff();
+	// else
+		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 
-void	Client::OnRequestCompleted()
+void	Client::OnRequestCompleted(int kq, int socket, Server& server)
 {
 	if (Request.method == "get") {
-		methodGet();
+		methodGet(kq, socket, server);
 	} else if (Request.method == "post") {
-		methodPost();
+		methodPost(kq, socket, server);
 	} else if (Request.method == "delete") {
 		methodDelete();
 	}
@@ -181,7 +163,7 @@ void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 			return;
 	}
 	std::cout << "Body Parsing Not Yet Implemented" << std::endl;
-	OnRequestCompleted();
+	OnRequestCompleted(kq, fd, server);
 }
 
 void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
@@ -215,6 +197,16 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 	// Read more
 	KqueueUtils::DisableEvent(kq, fd, WRITE);
 	KqueueUtils::EnableEvent(kq, fd, READ);
+}
+
+void	Client::OnFile_ReadyForRead(int fd)
+{
+	(void)fd;
+}
+
+void	Client::OnFile_ReadyForWrite(int fd)
+{
+	(void)fd;
 }
 
 void	Client::TEST_PREPARE_RESPONSE()

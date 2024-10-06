@@ -119,7 +119,7 @@ bool	HeaderValidator::ParseHeader(Request &request, Response& response)
 bool	HeaderValidator::ReadHeader(Request &request, Response& response, int fd)
 {
 	char	message[READING_BUFFER_SIZE];
-	size_t	bytes_read = recv(fd, message, READING_BUFFER_SIZE, 0);
+	size_t	bytes_read = recv(fd, message, 1024, 0);
 
 	if (bytes_read < 0)
 		return (ResponseUtils::InternalServerError500_NoBody(response), false);

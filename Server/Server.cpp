@@ -132,17 +132,22 @@ void	Server::OnFileDescriptorReadyForRead(int kq, int fd)
 	if (it != _clientMap.end())
 		it->second.OnSocket_ReadyForRead(*this, kq, fd);
 	else
-		throw std::runtime_error("Reading from files is not suported.");
+	{
+		ClientMapIterator	it = _clientMap.find(_fdMap.find(fd)->second);
+		it->second.OnFile_ReadyForRead(fd);
+	}
 }
 
 void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
 {
-	std::cout << "File descriptor: " << fd << " ready for write." << std::endl;
 	ClientMapIterator	it = _clientMap.find(fd);
 	if (it != _clientMap.end())
 		it->second.OnSocket_ReadyForWrite(*this, kq, fd);
 	else
-		throw std::runtime_error("Writing to files is not supported.");
+	{
+		ClientMapIterator	it = _clientMap.find(_fdMap.find(fd)->second);
+		it->second.OnFile_ReadyForWrite(fd);
+	}
 }
 
 #pragma endregion
@@ -159,6 +164,11 @@ bool	Server::IsFileDescriptorServerSocket(int fd)
 			return (true);
 	}
 	return (false);
+}
+
+void	Server::addFd(int fd, int socket)
+{
+	_fdMap[fd] = socket;
 }
 
 #pragma endregion
