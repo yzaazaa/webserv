@@ -15,11 +15,11 @@
 /// *** Constructors *** ///
 #pragma region Constructors
 
-Client::Client() : ServerFd(-1), Location(NULL)
+Client::Client() : ServerFd(-1), Location(NULL), Cgi(*this)
 {
 
 }
-Client::Client(int serverFd) : ServerFd(serverFd), Location(NULL)
+Client::Client(int serverFd) : ServerFd(serverFd), Location(NULL), Cgi(*this)
 {
 
 }
@@ -63,15 +63,27 @@ bool	Client::locationSupportUpload()
 	return false;
 }
 
-bool	Client::isCgi()
+bool Client::isCgi()
 {
-	std::string	extension = ".py";
-	int			extension_len = extension.length();
-	int			uri_len = Request.uri.path.length();
-	if (uri_len >= extension_len && !Request.uri.path.compare(uri_len - extension_len, extension_len, extension)
-		&& Location->CgiConfig.IsDefined)
-		return true;
-	return false;
+    std::vector<std::string> extensions;
+    extensions.push_back(".py");
+    extensions.push_back(".php");
+    extensions.push_back(".java");
+    int uri_len = Request.uri.path.length();
+
+    for (size_t i = 0; i < extensions.size(); i++)
+	{
+		std::string	&extension = extensions[i];
+        int extension_len = extension.length();
+        if (uri_len >= extension_len && 
+            !Request.uri.path.compare(uri_len - extension_len, extension_len, extension) &&
+            Location->CgiConfig.IsDefined)
+		{
+			Request.uri.extension = extension;
+            return true;
+		}
+    }
+    return false;
 }
 
 void	Client::methodGet(int kq, int socket, Server& server)
@@ -84,9 +96,9 @@ void	Client::methodGet(int kq, int socket, Server& server)
 		{
 			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
-				// if (isCgi(Request.uri.path))
-				// 	doCgiStuff();
-				// else
+				if (isCgi())
+					Cgi.run(server.getEnv());
+				else
 					return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 			}
 			if (getAutoIndex()) // Auto index true if on
@@ -97,9 +109,9 @@ void	Client::methodGet(int kq, int socket, Server& server)
 	}
 	if (FileUtils::hasReadAccess(Request.uri.path))
 	{
-		// if (isCgi(Request.uri.path))
-		// 	doCgiStuff();
-		// else
+		if (isCgi())
+			Cgi.run(server.getEnv());
+		else
 			return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 	}
 	return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
@@ -117,20 +129,18 @@ void	Client::methodPost(int kq, int socket, Server &server)
 		{
 			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
-				// if (isCgi(Request.uri.path))
-				// 	doCgiStuff(); 
-				// else
-				// {
-						return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
-				// }
+				if (isCgi())
+					Cgi.run(server.getEnv()); 
+				else
+					return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 			}
 			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 		}
 		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
 	}
-	// if (isCgi(Request.uri.path))
-	// 	doCgiStuff();
-	// else
+	if (isCgi())
+		Cgi.run(server.getEnv());
+	else
 		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 

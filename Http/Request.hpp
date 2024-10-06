@@ -8,6 +8,7 @@ struct URI
 	URI() { Reset(); }
 
 	std::string path;
+	std::string	extension;
 	std::string query;
 
 	void	Reset()

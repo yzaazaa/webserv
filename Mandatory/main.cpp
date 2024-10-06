@@ -28,9 +28,9 @@
 # include <sys/time.h>
 # include "../KqueueUtils/KqueueUtils.hpp"
 
-int	main(int argc, char **argv)
+int	main(int argc, char **argv, char **env)
 {
-	Server	server;
+	Server	server(env);
 	int		eventCount;
 	int		kq;
 	int		fd;

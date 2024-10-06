@@ -57,6 +57,7 @@ class	Server
 		std::map<int, SocketEntry>	_socketEntrys;
 		std::map<int, Client>		_clientMap;
 		std::map<int, int>			_fdMap;
+		char**						_env;
 
 		/// @brief Adds a ServerInstance to the SocketEntry if not already present.
 		void	AddServerInstance(const ServerInstance& serverInstance, int socketFd);
@@ -64,7 +65,7 @@ class	Server
 
 	public:
 		// Constructors
-		Server();
+		Server(char **env);
 
 		// Operators
 		Server& operator=(const Server& other);
@@ -93,6 +94,7 @@ class	Server
 		/// *** Utility Functions *** ///
 		/// @brief Returns true if the file descriptor belongs to a server listening socket
 		bool	IsFileDescriptorServerSocket(int fd);
+		char	**getEnv();
 
 #pragma endregion
 

@@ -10,6 +10,7 @@
 # include <sys/stat.h>
 # include "Response.hpp"
 # include "HeaderValidator/HeaderValidator.hpp"
+# include "../Cgi/Cgi.hpp"
 
 #define READING_BUFFER_SIZE 1024
 
@@ -25,7 +26,7 @@ class	Client
 		Request				Request;
 		int					ServerFd;
 		LocationInstance*	Location;
-
+		Cgi					Cgi;
 		
 		void	OnSocket_ReadyForRead(Server& server, int kq, int fd);
 		void	OnFile_ReadyForRead(int fd);

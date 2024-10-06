@@ -18,9 +18,9 @@
 /// *** Constructors *** ///
 #pragma region Constructors
 
-Server::Server()
+Server::Server(char **env)
 {
-
+	_env = env;
 }
 
 #pragma endregion
@@ -112,7 +112,7 @@ void	Server::OnNewClientDetected(int kq, int serverFd)
 	// Register the client socket with kqueue for readability
 	KqueueUtils::RegisterEvents(kq, client_fd); //TODO: improve this function, currently not clear what it does
 	Client	new_client(serverFd);
-	_clientMap[client_fd] = new_client;
+	_clientMap.insert(std::make_pair(client_fd, new_client));
 	std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << std::endl;
 	
 }
@@ -169,6 +169,11 @@ bool	Server::IsFileDescriptorServerSocket(int fd)
 void	Server::addFd(int fd, int socket)
 {
 	_fdMap[fd] = socket;
+}
+
+char	**Server::getEnv()
+{
+	return _env;
 }
 
 #pragma endregion
