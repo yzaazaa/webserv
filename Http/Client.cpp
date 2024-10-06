@@ -87,12 +87,10 @@ void	Client::methodGet(int kq, int socket, Server& server)
 				// if (isCgi(Request.uri.path))
 				// 	doCgiStuff();
 				// else
-				// {
-						return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
-				// }
+					return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 			}
 			if (getAutoIndex()) // Auto index true if on
-				return ; // 200 ok (return autoindex of directory (autoindex means loading page listing the directory entrys))
+				return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 		}
 		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
@@ -102,47 +100,38 @@ void	Client::methodGet(int kq, int socket, Server& server)
 		// if (isCgi(Request.uri.path))
 		// 	doCgiStuff();
 		// else
-		// {
-				return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
-		// }
+			return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 	}
 	return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 
 void	Client::methodPost(int kq, int socket, Server &server)
 {
-	(void)kq;
-	(void)server;
 	if (locationSupportUpload())
 		return (ResponseUtils::Created201(Response, *this, kq, socket, server), (void)0);
-	else
+	if (FileUtils::pathNotFound(Request.uri.path))
+		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
+	if (FileUtils::isDirectory(Request.uri.path))
 	{
-		if (FileUtils::pathNotFound(Request.uri.path))
-			return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
-		if (FileUtils::isDirectory(Request.uri.path))
+		if (Request.uri.path.back() == '/')
 		{
-			if (Request.uri.path.back() == '/')
+			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
-				if (FileUtils::dirHasIndexFiles(Request.uri.path))
-				{
-					// if (isCgi(Request.uri.path))
-					// 	doCgiStuff(); 
-					// else
-					// {
-							return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
-					// }
-				}
-				return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+				// if (isCgi(Request.uri.path))
+				// 	doCgiStuff(); 
+				// else
+				// {
+						return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
+				// }
 			}
-			return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
+			return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 		}
-		// if (isCgi(Request.uri.path))
-		// 	doCgiStuff();
-		// else
-		// {
-				return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
-		// }
+		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
 	}
+	// if (isCgi(Request.uri.path))
+	// 	doCgiStuff();
+	// else
+		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
 
 void	Client::OnRequestCompleted(int kq, int socket, Server& server)
