@@ -14,6 +14,7 @@
 # include "../Http/Client.hpp"
 # include <exception>
 # include <stdexcept>
+#include <sys/event.h>
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -96,8 +97,35 @@ void	Server::ConnectSocket(int socketFd, struct sockaddr * address, int addressL
 
 #pragma endregion
 
+long	ft_time(void)
+{
+	struct timeval	tv;
+
+	gettimeofday(&tv, NULL);
+	return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+}
+
 /// *** Server Loop Functions *** ///
 #pragma region Server Loop Functions
+
+void	Server::monitorActivty(int kq)
+{
+	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end(); it++)
+	{
+		ClientMapIterator	it2 = _clientMap.find(it->second);
+		Client	&client = it2->second;
+		if (ft_time() - client.lastTime >= TIMEOUT)
+		{
+			if (client.isCgi() && !client.Cgi.getStatus())
+			{
+				client.Cgi.clean();
+				std::cerr << "Cgi timeout!" << std::endl;
+			}
+			OnClientDisconnected(kq, client.socket);
+			std::cerr << "Client afk!" << std::endl;
+		}	
+	}
+}
 
 void	Server::OnNewClientDetected(int kq, int serverFd)
 {
@@ -111,7 +139,7 @@ void	Server::OnNewClientDetected(int kq, int serverFd)
 	
 	// Register the client socket with kqueue for readability
 	KqueueUtils::RegisterEvents(kq, client_fd); //TODO: improve this function, currently not clear what it does
-	Client	new_client(serverFd);
+	Client	new_client(serverFd, client_fd);
 	_clientMap.insert(std::make_pair(client_fd, new_client));
 	std::cout << "Accepted connection from " << inet_ntoa(client_addr.sin_addr) << std::endl;
 	
@@ -134,7 +162,7 @@ void	Server::OnFileDescriptorReadyForRead(int kq, int fd)
 	else
 	{
 		ClientMapIterator	it = _clientMap.find(_fdMap.find(fd)->second);
-		it->second.OnFile_ReadyForRead(fd);
+		it->second.OnFile_ReadyForRead(*this, kq, fd);
 	}
 }
 
@@ -146,7 +174,7 @@ void	Server::OnFileDescriptorReadyForWrite(int kq, int fd)
 	else
 	{
 		ClientMapIterator	it = _clientMap.find(_fdMap.find(fd)->second);
-		it->second.OnFile_ReadyForWrite(fd);
+		it->second.OnFile_ReadyForWrite(*this, kq, fd);
 	}
 }
 
@@ -169,6 +197,11 @@ bool	Server::IsFileDescriptorServerSocket(int fd)
 void	Server::addFd(int fd, int socket)
 {
 	_fdMap[fd] = socket;
+}
+
+void	Server::eraseFd(int fd)
+{
+	_fdMap.erase(fd);
 }
 
 char	**Server::getEnv()

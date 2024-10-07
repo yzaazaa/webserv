@@ -15,11 +15,7 @@
 /// *** Constructors *** ///
 #pragma region Constructors
 
-Client::Client() : ServerFd(-1), Location(NULL), Cgi(*this)
-{
-
-}
-Client::Client(int serverFd) : ServerFd(serverFd), Location(NULL), Cgi(*this)
+Client::Client(int serverFd, int socket) : ServerFd(serverFd), Location(NULL), Cgi(*this), socket(socket), lastTime(ft_time())
 {
 
 }
@@ -97,7 +93,7 @@ void	Client::methodGet(int kq, int socket, Server& server)
 			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
 				if (isCgi())
-					Cgi.run(server.getEnv());
+					return Cgi.run(server.getEnv(), kq, server);
 				else
 					return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 			}
@@ -110,7 +106,7 @@ void	Client::methodGet(int kq, int socket, Server& server)
 	if (FileUtils::hasReadAccess(Request.uri.path))
 	{
 		if (isCgi())
-			Cgi.run(server.getEnv());
+			return Cgi.run(server.getEnv(), kq, server);
 		else
 			return (ResponseUtils::OK200(Response, *this, kq, socket, server), (void)0);
 	}
@@ -130,7 +126,7 @@ void	Client::methodPost(int kq, int socket, Server &server)
 			if (FileUtils::dirHasIndexFiles(Request.uri.path))
 			{
 				if (isCgi())
-					Cgi.run(server.getEnv()); 
+					return Cgi.run(server.getEnv(), kq, server); 
 				else
 					return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 			}
@@ -139,7 +135,7 @@ void	Client::methodPost(int kq, int socket, Server &server)
 		return (ResponseUtils::MovedPermanently301_NoBody(this->Response, Request.uri.path + "/"), (void)0);
 	}
 	if (isCgi())
-		Cgi.run(server.getEnv());
+		return Cgi.run(server.getEnv(), kq, server);
 	else
 		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 }
@@ -153,6 +149,7 @@ void	Client::OnRequestCompleted(int kq, int socket, Server& server)
 	} else if (Request.method == "delete") {
 		methodDelete();
 	}
+	lastTime = ft_time();
 }
 
 void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
@@ -162,6 +159,7 @@ void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 		if (!HeaderValidator::ReadAndParseHeader(*this, server, fd))
 		{
 			KqueueUtils::EnableWriting(kq, fd);
+			lastTime = ft_time();
 			return;
 		}
 		else if (Request.IsHeaderParsingDone)
@@ -170,7 +168,10 @@ void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 			// TEST_PREPARE_RESPONSE();
 		}
 		else
+		{
+			lastTime = ft_time();
 			return;
+		}
 	}
 	std::cout << "Body Parsing Not Yet Implemented" << std::endl;
 	OnRequestCompleted(kq, fd, server);
@@ -207,16 +208,43 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 	// Read more
 	KqueueUtils::DisableEvent(kq, fd, WRITE);
 	KqueueUtils::EnableEvent(kq, fd, READ);
+	lastTime = ft_time();
 }
 
-void	Client::OnFile_ReadyForRead(int fd)
+void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
 {
-	(void)fd;
+	char	message[READING_BUFFER_SIZE];
+	int	bytes_read = read(fd, message, READING_BUFFER_SIZE);
+	lastTime = ft_time();
+	if (bytes_read < 0)
+	{
+		if (isCgi())
+		{
+			Cgi.clean();
+			ResponseUtils::InternalServerError500_NoBody(Response);
+			throw std::runtime_error("Cgi fail!");
+		}
+	}
+	else if (bytes_read == 0)
+	{
+		if (isCgi())
+			return Cgi.prepareResponse(server, kq, fd);
+	}
+	Response.Buffer += message;
+	if (bytes_read < READING_BUFFER_SIZE)
+	{
+		if (isCgi())
+			return Cgi.prepareResponse(server, kq, fd);
+	}
 }
 
-void	Client::OnFile_ReadyForWrite(int fd)
+void	Client::OnFile_ReadyForWrite(Server& server, int kq, int fd)
 {
-	(void)fd;
+	if (isCgi())
+	{
+		write(fd, Request.body.c_str(), Request.body.length()); // Protect
+		Cgi.execFile(kq, server);
+	}
 }
 
 void	Client::TEST_PREPARE_RESPONSE()

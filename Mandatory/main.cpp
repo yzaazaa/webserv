@@ -53,7 +53,7 @@ int	main(int argc, char **argv, char **env)
 	{
 		if ((eventCount = KqueueUtils::WaitForEvent(kq, evList, SOMAXCONN)) == -1)
 			continue;
-		
+		server.monitorActivty(kq);
 		for (int i = 0; i < eventCount; i++)
 		{
 

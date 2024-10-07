@@ -17,8 +17,7 @@
 class	Client
 {
 	public:
-		Client();
-		Client(int server);
+		Client(int server, int socket);
 
 		~Client();
 	
@@ -27,12 +26,14 @@ class	Client
 		int					ServerFd;
 		LocationInstance*	Location;
 		Cgi					Cgi;
+		int					socket;
+		long				lastTime;
 		
 		void	OnSocket_ReadyForRead(Server& server, int kq, int fd);
-		void	OnFile_ReadyForRead(int fd);
+		void	OnFile_ReadyForRead(Server& server, int kq, int fd);
 
 		void	OnSocket_ReadyForWrite(Server& server, int kq, int fd);
-		void	OnFile_ReadyForWrite(int fd);
+		void	OnFile_ReadyForWrite(Server& server, int kq, int fd);
 
 		void	OnRequestCompleted(int kq, int socket, Server& server);
 		bool	getAutoIndex();

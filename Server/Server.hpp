@@ -16,11 +16,13 @@
 # include "../ServerInstance/ServerInstance.hpp"
 # include <sys/types.h>
 # include <sys/event.h>
+# include <sys/time.h>
 # include <cerrno>
 # include <iostream>
 # include "../KqueueUtils/KqueueUtils.hpp"
 # include <unistd.h>
 
+# define TIMEOUT 10000
 
 struct	SocketEntry
 {
@@ -79,6 +81,8 @@ class	Server
 
 
 		/// *** Server Loop Functions *** ///
+		/// @brief kicks afk clients and monitors cgi timeout
+		void	monitorActivty(int kq);
 		/// @brief Handles when a new client wants to connect
 		void	OnNewClientDetected(int kq, int serverFd);
 		/// @brief Handles when a client disconnects
@@ -89,6 +93,7 @@ class	Server
 		void	OnFileDescriptorReadyForWrite(int kq, int fd);
 
 		void	addFd(int fd, int socket);
+		void	eraseFd(int fd);
 	
 
 		/// *** Utility Functions *** ///
@@ -104,3 +109,5 @@ class	Server
 		// Destructor
 		~Server();
 };
+
+long	ft_time(void);

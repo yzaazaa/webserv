@@ -1,10 +1,11 @@
 #include "Cgi.hpp"
+#include <stdexcept>
 #include <string>
 #include <unistd.h>
 #include <utility>
 #include "../Http/Client.hpp"
 
-Cgi::Cgi(Client &client) : client(client) {}
+Cgi::Cgi(Client &client) : client(client), ready(false) {}
 
 Cgi::~Cgi() {}
 
@@ -72,47 +73,92 @@ char	**Cgi::getEnvStrs()
     return envArray;
 }
 
-void	Cgi::clean(char **env)
+void	Cgi::clean()
 {
+	if (pid != 0)
+		kill(pid, SIGKILL);
 	dup2(stdFd[0], STDIN_FILENO);
 	dup2(stdFd[1], STDOUT_FILENO);
 	close(fd[0]);
 	close(fd[1]);
 	close(stdFd[0]);
 	close(stdFd[1]);
-	if (env)
+	if (_env)
 	{
-		for (int i = 0; env[i] != NULL; i++)
-			delete[] env[i];
-		delete[] env;
+		for (int i = 0; _env[i] != NULL; i++)
+			delete[] _env[i];
+		delete[] _env;
 	}
 }
 
-void	Cgi::execFile(int kq)
+void	Cgi::execFile(int kq, Server &server)
 {
-	if (pipe(fd) == -1)
-		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
-	if ((stdFd[0] = dup(STDIN_FILENO)) == -1)
-		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
-	if ((stdFd[1] = dup(STDOUT_FILENO)) == -1)
-		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
-	char	**env = getEnvStrs();
+	try
+	{
+		_env = getEnvStrs();
+	}
+	catch (std::exception &e)
+	{
+		clean();
+		ResponseUtils::InternalServerError500_NoBody(client.Response);
+		throw ;
+	}
 	pid = fork();
 	if (pid == -1)
 		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
 	if (!pid)
 	{
-		dup2(fd[0], STDIN_FILENO);
-		dup2(fd[1], STDOUT_FILENO);
-		execve(args[0], args, env);
-		clean(env);
+		if (dup2(fd[0], STDIN_FILENO) == -1)
+		{
+			clean();
+			throw std::runtime_error("Execve fail!");
+		}
+		if (dup2(fd[1], STDOUT_FILENO) == -1)
+		{
+			clean();
+			throw std::runtime_error("Execve fail!");
+		}
+		execve(args[0], args, _env);
+		clean();
+		throw std::runtime_error("Execve fail!");
 	}
 	KqueueUtils::RegisterEvents(kq, fd[1], true);
+	server.addFd(fd[1], client.socket);
 }
 
-void	Cgi::run(char **env, int kq)
+void	Cgi::prepareResponse(Server& server, int kq, int fd)
+{
+	ready = true;
+	KqueueUtils::DeleteEvents(kq, fd);
+	clean();
+	server.eraseFd(fd);
+	KqueueUtils::EnableEvent(kq, client.socket, WRITE);
+	client.Response.IsLastResponse = true;
+	client.Response.CloseConnection = true;
+}
+
+void	Cgi::prepareFds(Server& server, int kq)
+{
+	if (pipe(fd) == -1)
+		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
+	server.addFd(fd[0], client.socket);
+	KqueueUtils::RegisterEvents(kq, fd[0]);
+	KqueueUtils::DisableEvent(kq, fd[0], READ);
+	KqueueUtils::EnableEvent(kq, fd[0], WRITE);
+	if ((stdFd[0] = dup(STDIN_FILENO)) == -1)
+		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
+	if ((stdFd[1] = dup(STDOUT_FILENO)) == -1)
+		return (ResponseUtils::InternalServerError500_NoBody(client.Response), (void)0);
+}
+
+void	Cgi::run(char **env, int kq, Server &server)
 {
 	setEnv(env);
 	fillExecArgs();
-	execFile(kq);
+	prepareFds(server, kq);
+}
+
+bool	Cgi::getStatus()
+{
+	return ready;
 }
