@@ -28,6 +28,7 @@ class ResponseUtils
 		static void	MethodNotAllowed405_NoBody(Response& response);
 		static void	Forbidden403_NoBody(Response& response);
 		static void	Conflict409_NoBody(Response& response);
+		static void	GatewayTimeout504_NoBody(Response& response);
 
 		static void	NoContent204_NoBody(Response& response);
 		static void	OK200(Response& response, Client& client, int kq, int client_socket, Server& server);

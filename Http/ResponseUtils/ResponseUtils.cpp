@@ -131,6 +131,18 @@ void	ResponseUtils::Conflict409_NoBody(Response& response)
 	response.CloseConnection = true;
 }
 
+void	ResponseUtils::GatewayTimeout504_NoBody(Response& response)
+{
+	std::ostringstream	stream;
+
+	stream << "HTTP/1.1 504 Gateway Timeout" << Endl_Request;
+	stream << "Content-Length: 0" << DoubleEndl_Request;
+
+	response.Buffer = stream.str();
+	response.IsLastResponse = true;
+	response.CloseConnection = true;
+}
+
 void	ResponseUtils::NoContent204_NoBody(Response& response)
 {
 	std::ostringstream	stream;

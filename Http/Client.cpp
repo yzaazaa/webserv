@@ -218,22 +218,26 @@ void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
 	lastTime = ft_time();
 	if (bytes_read < 0)
 	{
-		if (isCgi())
+		if (isCgi() && Cgi.finished)
 		{
-			Cgi.clean();
+			KqueueUtils::DeleteEvents(kq, fd);
+			Cgi.clean(server, kq);
+			KqueueUtils::EnableEvent(kq, socket, WRITE);
 			ResponseUtils::InternalServerError500_NoBody(Response);
-			throw std::runtime_error("Cgi fail!");
+			lastTime = ft_time();
+			return ;
 		}
 	}
 	else if (bytes_read == 0)
 	{
-		if (isCgi())
+		if (isCgi() && Cgi.finished)
 			return Cgi.prepareResponse(server, kq, fd);
 	}
+	message[bytes_read] = '\0';
 	Response.Buffer += message;
 	if (bytes_read < READING_BUFFER_SIZE)
 	{
-		if (isCgi())
+		if (isCgi() && Cgi.finished)
 			return Cgi.prepareResponse(server, kq, fd);
 	}
 }
@@ -242,7 +246,13 @@ void	Client::OnFile_ReadyForWrite(Server& server, int kq, int fd)
 {
 	if (isCgi())
 	{
-		write(fd, Request.body.c_str(), Request.body.length()); // Protect
+		if (write(fd, Request.body.c_str(), Request.body.length()) == -1 || lseek(fd, 0, SEEK_SET) == -1)
+		{
+			Cgi.clean(server, kq);
+			KqueueUtils::EnableEvent(kq, socket, WRITE);
+			lastTime = ft_time();
+			return (ResponseUtils::InternalServerError500_NoBody(Response), (void)0);
+		}
 		Cgi.execFile(kq, server);
 	}
 }

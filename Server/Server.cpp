@@ -15,6 +15,7 @@
 # include <exception>
 # include <stdexcept>
 #include <sys/event.h>
+#include <sys/wait.h>
 
 /// *** Constructors *** ///
 #pragma region Constructors
@@ -116,14 +117,25 @@ void	Server::monitorActivty(int kq)
 		Client	&client = it2->second;
 		if (ft_time() - client.lastTime >= TIMEOUT)
 		{
-			if (client.isCgi() && !client.Cgi.getStatus())
+			if (client.isCgi())
 			{
-				client.Cgi.clean();
-				std::cerr << "Cgi timeout!" << std::endl;
+				int	ret = client.Cgi.wait(*this, kq, 1);
+				if (!ret)
+					client.lastTime = ft_time();
+				continue ;
 			}
 			OnClientDisconnected(kq, client.socket);
 			std::cerr << "Client afk!" << std::endl;
 		}	
+	}
+	for (ClientMapIterator it = _clientMap.begin(); it != _clientMap.end(); it++)
+	{
+		Client	&client = it->second;
+		if (ft_time() - client.lastTime >= TIMEOUT)
+		{
+			OnClientDisconnected(kq, client.socket);
+			std::cerr << "Client afk!" << std::endl;
+		}
 	}
 }
 
@@ -152,6 +164,14 @@ void	Server::OnClientDisconnected(int kq, int fd)
 	KqueueUtils::DeleteEvents(kq, fd);
 	close(fd);
 	_clientMap.erase(fd);
+	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end(); it++)
+	{
+		if (it->second == fd)
+		{
+			eraseFd(fd);
+			close(it->first); // ?? Maybe depands on get and post implementation
+		}
+	}
 }
 
 void	Server::OnFileDescriptorReadyForRead(int kq, int fd)

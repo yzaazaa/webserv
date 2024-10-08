@@ -26,7 +26,6 @@ class Cgi
 		int			fd[2];
 		int			stdFd[2];
 		int			pid;
-		bool		ready;
 
 		void	getEnvMap(char **env);
 		void	setEnv(char **env);
@@ -38,9 +37,10 @@ class Cgi
 		Cgi(Client &client);
 		~Cgi();
 
+		int			finished;
 		void	run(char **env, int kq, Server &server);
 		void	execFile(int kq, Server &server);
 		void	prepareResponse(Server& server, int kq, int fd);
-		void	clean();
-		bool	getStatus();
+		void	clean(Server& server, int kq);
+		int		wait(Server& server, int kq, int flag);
 };
