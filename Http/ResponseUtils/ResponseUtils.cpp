@@ -1,6 +1,7 @@
 # include "ResponseUtils.hpp"
 # include "../Client.hpp"
 # include "../../Server/Server.hpp"
+#include <sys/event.h>
 # include <sys/fcntl.h>
 
 /// *** Constructors *** ///
@@ -29,6 +30,7 @@ void	ResponseUtils::BadRequest400_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -41,6 +43,7 @@ void	ResponseUtils::URITooLong414_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -53,11 +56,12 @@ void	ResponseUtils::NotImplemented501_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
 
-void	ResponseUtils::InternalServerError500_NoBody(Response& response)
+void	ResponseUtils::InternalServerError500_NoBody(Response& response, int kq, int client_socket)
 {
 	std::ostringstream	stream;
 
@@ -65,8 +69,10 @@ void	ResponseUtils::InternalServerError500_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
+	KqueueUtils::EnableEvent(kq, client_socket, WRITE);
 }
 
 void	ResponseUtils::NotFound404_NoBody(Response& response)
@@ -77,6 +83,7 @@ void	ResponseUtils::NotFound404_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -89,6 +96,7 @@ void	ResponseUtils::MethodNotAllowed405_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -103,6 +111,7 @@ void	ResponseUtils::MovedPermanently301_NoBody(Response& response, std::string c
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -115,6 +124,7 @@ void	ResponseUtils::Forbidden403_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -127,11 +137,12 @@ void	ResponseUtils::Conflict409_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
 
-void	ResponseUtils::GatewayTimeout504_NoBody(Response& response)
+void	ResponseUtils::GatewayTimeout504_NoBody(Response& response, int kq, int client_socket)
 {
 	std::ostringstream	stream;
 
@@ -139,8 +150,10 @@ void	ResponseUtils::GatewayTimeout504_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
+	KqueueUtils::EnableEvent(kq, client_socket, WRITE);
 }
 
 void	ResponseUtils::NoContent204_NoBody(Response& response)
@@ -151,6 +164,7 @@ void	ResponseUtils::NoContent204_NoBody(Response& response)
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = true;
 }
@@ -163,11 +177,12 @@ void	ResponseUtils::OK200(Response& response, Client& client, int kq, int client
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = false;
 	int	fd = open(client.Request.uri.path.c_str(), O_RDONLY);
 	if (fd == -1)
-		return (ResponseUtils::InternalServerError500_NoBody(response), (void)0);
+		return (ResponseUtils::InternalServerError500_NoBody(response, kq, client_socket), (void)0);
 	KqueueUtils::RegisterEvents(kq, fd, true);
 	server.addFd(fd, client_socket);
 }
@@ -176,15 +191,16 @@ void	ResponseUtils::Created201(Response& response, Client& client, int kq, int c
 {
 	std::ostringstream	stream;
 
-	stream << "HTTP/1.1 200 OK" << Endl_Request;
+	stream << "HTTP/1.1 201 Created" << Endl_Request;
 	stream << "Content-Length: 0" << DoubleEndl_Request;
 
 	response.Buffer = stream.str();
+	std::cout << response.Buffer << std::endl;
 	response.IsLastResponse = true;
 	response.CloseConnection = false;
 	int	fd = open(client.Request.uri.path.c_str(), O_WRONLY);
 	if (fd == -1)
-		return (ResponseUtils::InternalServerError500_NoBody(response), (void)0);
+		return (ResponseUtils::InternalServerError500_NoBody(response, kq, client_socket), (void)0);
 	KqueueUtils::RegisterEvents(kq, fd);
 	KqueueUtils::DisableEvent(kq, fd, READ);
 	KqueueUtils::EnableEvent(kq, fd, WRITE);

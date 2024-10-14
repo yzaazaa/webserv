@@ -41,7 +41,7 @@ class	Client
 		bool	isCgi();
 		void	methodGet(int kq, int socekt, Server& server);
 		void	methodPost(int kq, int socket, Server& server);
-		void	methodDelete();
+		void	methodDelete(int kq, int socket);
 		// void	OnDisconnect();
 
 		/// *** DEBUG *** ///

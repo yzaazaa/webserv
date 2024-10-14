@@ -15,14 +15,14 @@
 /// *** Constructors *** ///
 #pragma region Constructors
 
-Client::Client(int serverFd, int socket) : ServerFd(serverFd), Location(NULL), Cgi(*this), socket(socket), lastTime(ft_time())
+Client::Client(int serverFd, int socket) : ServerFd(serverFd), Location(NULL), socket(socket), lastTime(ft_time())
 {
 
 }
 
 #pragma endregion
 
-void	Client::methodDelete()
+void	Client::methodDelete(int kq, int socket)
 {
 	if (FileUtils::pathNotFound(Request.uri.path))
 		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
@@ -33,7 +33,7 @@ void	Client::methodDelete()
 			if (!FileUtils::deleteFolderContent(Request.uri.path))
 			{
 				if (FileUtils::hasWriteAccess(Request.uri.path))
-					return (ResponseUtils::InternalServerError500_NoBody(this->Response), (void)0);
+					return (ResponseUtils::InternalServerError500_NoBody(this->Response, kq, socket), (void)0);
 				return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 			}
 			return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
@@ -43,7 +43,7 @@ void	Client::methodDelete()
 	if (std::remove(Request.uri.path.c_str()))
 	{
 		if (FileUtils::hasWriteAccess(Request.uri.path))
-			return (ResponseUtils::InternalServerError500_NoBody(this->Response),(void)0);
+			return (ResponseUtils::InternalServerError500_NoBody(this->Response, kq, socket),(void)0);
 		return (ResponseUtils::Forbidden403_NoBody(this->Response), (void)0);
 	}
 	return (ResponseUtils::NoContent204_NoBody(this->Response), (void)0);
@@ -66,14 +66,12 @@ bool Client::isCgi()
     extensions.push_back(".php");
     extensions.push_back(".java");
     int uri_len = Request.uri.path.length();
-
     for (size_t i = 0; i < extensions.size(); i++)
 	{
 		std::string	&extension = extensions[i];
         int extension_len = extension.length();
         if (uri_len >= extension_len && 
-            !Request.uri.path.compare(uri_len - extension_len, extension_len, extension) &&
-            Location->CgiConfig.IsDefined)
+            !Request.uri.path.compare(uri_len - extension_len, extension_len, extension))
 		{
 			Request.uri.extension = extension;
             return true;
@@ -84,8 +82,11 @@ bool Client::isCgi()
 
 void	Client::methodGet(int kq, int socket, Server& server)
 {
+	std::cout << "in get\n";
 	if (FileUtils::pathNotFound(Request.uri.path))
+	{
 		return (ResponseUtils::NotFound404_NoBody(this->Response), (void)0);
+	}
 	if (FileUtils::isDirectory(Request.uri.path))
 	{
 		if (Request.uri.path.back() == '/')
@@ -142,12 +143,13 @@ void	Client::methodPost(int kq, int socket, Server &server)
 
 void	Client::OnRequestCompleted(int kq, int socket, Server& server)
 {
+	Cgi.setClient(this);
 	if (Request.method == "get") {
 		methodGet(kq, socket, server);
 	} else if (Request.method == "post") {
 		methodPost(kq, socket, server);
 	} else if (Request.method == "delete") {
-		methodDelete();
+		methodDelete(kq, socket);
 	}
 	lastTime = ft_time();
 }
@@ -156,7 +158,7 @@ void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 {
 	if (!Request.IsHeaderParsingDone)
 	{
-		if (!HeaderValidator::ReadAndParseHeader(*this, server, fd))
+		if (!HeaderValidator::ReadAndParseHeader(*this, server, kq, fd))
 		{
 			KqueueUtils::EnableWriting(kq, fd);
 			lastTime = ft_time();
@@ -174,6 +176,7 @@ void	Client::OnSocket_ReadyForRead(Server& server, int kq, int fd)
 		}
 	}
 	std::cout << "Body Parsing Not Yet Implemented" << std::endl;
+	Request.uri.path.erase(0,1);
 	OnRequestCompleted(kq, fd, server);
 }
 
@@ -213,7 +216,8 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 
 void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
 {
-	char	message[READING_BUFFER_SIZE];
+	std::cout << fd << " ready ro read\n";
+	char	message[READING_BUFFER_SIZE + 1];
 	int	bytes_read = read(fd, message, READING_BUFFER_SIZE);
 	lastTime = ft_time();
 	if (bytes_read < 0)
@@ -221,22 +225,33 @@ void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
 		if (isCgi() && Cgi.finished)
 		{
 			KqueueUtils::DeleteEvents(kq, fd);
+			server.eraseFd(fd);
 			Cgi.clean(server, kq);
-			KqueueUtils::EnableEvent(kq, socket, WRITE);
-			ResponseUtils::InternalServerError500_NoBody(Response);
+			ResponseUtils::InternalServerError500_NoBody(Response, kq, socket);
 			lastTime = ft_time();
 			return ;
 		}
 	}
 	else if (bytes_read == 0)
 	{
+		KqueueUtils::DisableEvent(kq, fd, READ);
 		if (isCgi() && Cgi.finished)
 			return Cgi.prepareResponse(server, kq, fd);
 	}
 	message[bytes_read] = '\0';
+	std::cout << "\n----------------------------------------\n" << message << "\n----------------------------------------\n";
+	if (Response.Buffer.empty())
+	{
+		std::ostringstream	stream;
+
+		stream << "HTTP/1.1 200 OK" << Endl_Request;
+
+		Response.Buffer = stream.str();
+	}
 	Response.Buffer += message;
 	if (bytes_read < READING_BUFFER_SIZE)
 	{
+		KqueueUtils::DisableEvent(kq, fd, READ);
 		if (isCgi() && Cgi.finished)
 			return Cgi.prepareResponse(server, kq, fd);
 	}
@@ -246,13 +261,15 @@ void	Client::OnFile_ReadyForWrite(Server& server, int kq, int fd)
 {
 	if (isCgi())
 	{
-		if (write(fd, Request.body.c_str(), Request.body.length()) == -1 || lseek(fd, 0, SEEK_SET) == -1)
+		KqueueUtils::DisableEvent(kq, fd, WRITE);
+		if (write(fd, Request.body.c_str(), Request.body.length()) == -1)
 		{
+			std::cerr << "error wrintg\n";
 			Cgi.clean(server, kq);
-			KqueueUtils::EnableEvent(kq, socket, WRITE);
 			lastTime = ft_time();
-			return (ResponseUtils::InternalServerError500_NoBody(Response), (void)0);
+			return (ResponseUtils::InternalServerError500_NoBody(Response, kq, socket), (void)0);
 		}
+		std::cerr << "Wrote to file successfully\n";
 		Cgi.execFile(kq, server);
 	}
 }

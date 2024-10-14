@@ -20,7 +20,7 @@ class HeaderValidator
 		static void	DEBUG_PRINT_REQUEST(Request request); // test function
 	
 		static bool ParseHeader(Request& request, Response& response);
-		static bool ReadHeader(Request& request, Response& response, int fd);
+		static bool ReadHeader(Request& request, Response& response, int kq, int fd);
 
 		/// @brief Resolves the Location/Server Instance handler for a given request
 		static bool	ResolveRequestContext(Client& client, Server& server);
@@ -29,7 +29,7 @@ class HeaderValidator
 
 	public:
 		// Functions
-		static bool	ReadAndParseHeader(Client& client, Server& server, int fd);
+		static bool	ReadAndParseHeader(Client& client, Server& server, int kq, int fd);
 		static void	RemoveHeaderFromBuffer(Request& request);
 
 

@@ -1,4 +1,5 @@
 # include "KqueueUtils.hpp"
+#include <ctime>
 #include <sys/event.h>
 
 /// *** Constructors *** ///
@@ -44,7 +45,10 @@ int	KqueueUtils::PrepareKqueue(Server& server)
 
 int	KqueueUtils::WaitForEvent(int kq, struct kevent* evList, int maxEvents)
 {
-	int eventCount = kevent(kq, NULL, 0, evList, maxEvents, NULL);
+	struct timespec	tv;
+	tv.tv_nsec = 0;
+	tv.tv_sec = 1;
+	int eventCount = kevent(kq, NULL, 0, evList, maxEvents, &tv);
 	if (eventCount == -1)
 		std::cerr << "Error waiting for event: " << strerror(errno) << std::endl;
 	return (eventCount);
@@ -74,11 +78,11 @@ void	KqueueUtils::RegisterEvents(int kq, int fd, bool onlyRead)
 		ThrowErrnoException("Error registering event");
 }
 
-void	KqueueUtils::DeleteEvents(int kq, int fd)
+void	KqueueUtils::DeleteEvents(int kq, int fd, int onlyRead)
 {
-	if (!modifyEvent(kq, fd, EVFILT_WRITE, EV_DELETE))
+	if (onlyRead != 2 && !modifyEvent(kq, fd, EVFILT_READ, EV_DELETE))
 		ThrowErrnoException("Error registering event");
-	if (!modifyEvent(kq, fd, EVFILT_READ, EV_DELETE))
+	if (onlyRead != 0 && !modifyEvent(kq, fd, EVFILT_WRITE, EV_DELETE))
 		ThrowErrnoException("Error registering event");
 }
 

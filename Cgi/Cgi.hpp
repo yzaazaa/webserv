@@ -18,13 +18,13 @@ typedef std::map<std::string, std::string> stringMap;
 class Cgi
 {
 	private:
-		Client		&client;
+		Client		*client;
 		stringMap	envMap;
 		char		**_env;
 		std::string	scriptExecutor;
 		char		*args[3];
-		int			fd[2];
-		int			stdFd[2];
+		int			fd[3];
+		int			stdFd[3];
 		int			pid;
 
 		void	getEnvMap(char **env);
@@ -34,8 +34,10 @@ class Cgi
 		void	prepareFds(Server& server, int kq);
 
 	public:
-		Cgi(Client &client);
+		Cgi();
 		~Cgi();
+
+		void	setClient(Client *client);
 
 		int			finished;
 		void	run(char **env, int kq, Server &server);

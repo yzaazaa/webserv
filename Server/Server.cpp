@@ -111,30 +111,37 @@ long	ft_time(void)
 
 void	Server::monitorActivty(int kq)
 {
-	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end(); it++)
+	if (!_fdMap.empty())
 	{
-		ClientMapIterator	it2 = _clientMap.find(it->second);
-		Client	&client = it2->second;
-		if (ft_time() - client.lastTime >= TIMEOUT)
+		for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end(); it++)
 		{
+			ClientMapIterator	it2 = _clientMap.find(it->second);
+			Client	&client = it2->second;
 			if (client.isCgi())
 			{
 				int	ret = client.Cgi.wait(*this, kq, 1);
 				if (!ret)
+				{
 					client.lastTime = ft_time();
-				continue ;
+					return ;
+				}
 			}
-			OnClientDisconnected(kq, client.socket);
-			std::cerr << "Client afk!" << std::endl;
-		}	
+			if (_fdMap.empty())
+				break ;
+		}
 	}
-	for (ClientMapIterator it = _clientMap.begin(); it != _clientMap.end(); it++)
+	if (!_clientMap.empty())
 	{
-		Client	&client = it->second;
-		if (ft_time() - client.lastTime >= TIMEOUT)
+		for (ClientMapIterator it = _clientMap.begin(); it != _clientMap.end();)
 		{
-			OnClientDisconnected(kq, client.socket);
-			std::cerr << "Client afk!" << std::endl;
+			Client	&client = it->second;
+			if (ft_time() - client.lastTime >= TIMEOUT && !client.isCgi())
+			{
+				it = OnClientDisconnectedLoop(kq, it);
+				std::cerr << "Client afk!" << std::endl;
+			}
+			else
+				it++;
 		}
 	}
 }
@@ -157,6 +164,26 @@ void	Server::OnNewClientDetected(int kq, int serverFd)
 	
 }
 
+ClientMapIterator	Server::OnClientDisconnectedLoop(int kq, ClientMapIterator client)
+{
+	std::cout << "Client disconnected." << std::endl;
+	//TODO: call OnDisconnect int client
+	KqueueUtils::DeleteEvents(kq, client->second.socket);
+	close(client->second.socket);
+	ClientMapIterator ret = _clientMap.erase(client);
+	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end();)
+	{
+		if (it->second == client->second.socket)
+		{
+			close(it->first); // ?? Maybe depands on get and post implementation
+			it = eraseFd(it);
+		}
+		else
+			it++;
+	}
+	return ret;
+}
+
 void	Server::OnClientDisconnected(int kq, int fd)
 {
 	std::cout << "Client disconnected." << std::endl;
@@ -164,13 +191,15 @@ void	Server::OnClientDisconnected(int kq, int fd)
 	KqueueUtils::DeleteEvents(kq, fd);
 	close(fd);
 	_clientMap.erase(fd);
-	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end(); it++)
+	for (FdMapIterataor it = _fdMap.begin(); it != _fdMap.end();)
 	{
 		if (it->second == fd)
 		{
-			eraseFd(fd);
 			close(it->first); // ?? Maybe depands on get and post implementation
+			it = eraseFd(it);
 		}
+		else
+			it++;
 	}
 }
 
@@ -222,6 +251,11 @@ void	Server::addFd(int fd, int socket)
 void	Server::eraseFd(int fd)
 {
 	_fdMap.erase(fd);
+}
+
+FdMapIterataor	Server::eraseFd(FdMapIterataor it)
+{
+	return _fdMap.erase(it);
 }
 
 char	**Server::getEnv()

@@ -22,7 +22,7 @@
 # include "../KqueueUtils/KqueueUtils.hpp"
 # include <unistd.h>
 
-# define TIMEOUT 10000
+# define TIMEOUT 4000
 
 struct	SocketEntry
 {
@@ -87,6 +87,8 @@ class	Server
 		void	OnNewClientDetected(int kq, int serverFd);
 		/// @brief Handles when a client disconnects
 		void	OnClientDisconnected(int kq, int fd);
+		/// @brief Handles when a client disconnects with iterator
+		ClientMapIterator	OnClientDisconnectedLoop(int kq, ClientMapIterator client);
 		/// @brief Handles when a file descriptor is ready to be read from
 		void	OnFileDescriptorReadyForRead(int kq, int fd);
 		/// @brief Handles when a file descriptor is ready to be written into
@@ -94,6 +96,7 @@ class	Server
 
 		void	addFd(int fd, int socket);
 		void	eraseFd(int fd);
+		FdMapIterataor	eraseFd(FdMapIterataor it);
 	
 
 		/// *** Utility Functions *** ///

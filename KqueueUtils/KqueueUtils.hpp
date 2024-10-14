@@ -30,7 +30,7 @@ class KqueueUtils
 		static int	PrepareKqueue(Server& server);
 	
 		/// @brief Deletes all events
-		static void	DeleteEvents(int kq, int fd);
+		static void	DeleteEvents(int kq, int fd, int onlyRead = 0);
 	
 		/// @brief Enables Read and Disables Write and adds them both
 		static void	RegisterEvents(int kq, int fd, bool onlyRead = false);

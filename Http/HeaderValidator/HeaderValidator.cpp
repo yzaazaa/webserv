@@ -116,13 +116,13 @@ bool	HeaderValidator::ParseHeader(Request &request, Response& response)
 	return (true);
 }
 
-bool	HeaderValidator::ReadHeader(Request &request, Response& response, int fd)
+bool	HeaderValidator::ReadHeader(Request &request, Response& response, int kq, int fd)
 {
 	char	message[READING_BUFFER_SIZE];
 	size_t	bytes_read = recv(fd, message, 1024, 0);
 
 	if (bytes_read < 0)
-		return (ResponseUtils::InternalServerError500_NoBody(response), false);
+		return (ResponseUtils::InternalServerError500_NoBody(response, kq, fd), false);
 	message[bytes_read] = 0;
 	request.Buffer += message;
 	if (request.Buffer.size() > HEADER_MAX_SIZE)
@@ -130,11 +130,11 @@ bool	HeaderValidator::ReadHeader(Request &request, Response& response, int fd)
 	return (true);
 }
 
-bool	HeaderValidator::ReadAndParseHeader(Client& client, Server& server, int fd)
+bool	HeaderValidator::ReadAndParseHeader(Client& client, Server& server, int kq, int fd)
 {
 	if (!client.Request.IsHeaderParsingDone)
 	{
-		if (!HeaderValidator::ReadHeader(client.Request, client.Response, fd))
+		if (!HeaderValidator::ReadHeader(client.Request, client.Response, kq, fd))
 			return (false);
 
 		// Wait untill the client has sent the entire header
@@ -147,7 +147,6 @@ bool	HeaderValidator::ReadAndParseHeader(Client& client, Server& server, int fd)
 				return (false);
 		}
 	}
-
 	return (true);
 }
 

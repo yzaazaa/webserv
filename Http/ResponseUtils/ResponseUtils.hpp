@@ -21,14 +21,14 @@ class ResponseUtils
 		static void	BadRequest400_NoBody(Response& response);
 		static void	URITooLong414_NoBody(Response& response);
 		static void	NotImplemented501_NoBody(Response& response);
-		static void	InternalServerError500_NoBody(Response& response);
+		static void	InternalServerError500_NoBody(Response& response, int kq, int client_socket);
 
 		static void	NotFound404_NoBody(Response& response);
 		static void	MovedPermanently301_NoBody(Response& response, std::string const &location);
 		static void	MethodNotAllowed405_NoBody(Response& response);
 		static void	Forbidden403_NoBody(Response& response);
 		static void	Conflict409_NoBody(Response& response);
-		static void	GatewayTimeout504_NoBody(Response& response);
+		static void	GatewayTimeout504_NoBody(Response& response, int kq, int client_socket);
 
 		static void	NoContent204_NoBody(Response& response);
 		static void	OK200(Response& response, Client& client, int kq, int client_socket, Server& server);

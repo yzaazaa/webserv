@@ -51,12 +51,13 @@ int	main(int argc, char **argv, char **env)
 	struct kevent	evList[SOMAXCONN];
 	while (667)
 	{
-		server.monitorActivty(kq);
+		// server.monitorActivty(kq);
 		if ((eventCount = KqueueUtils::WaitForEvent(kq, evList, SOMAXCONN)) == -1)
 			continue;
+		server.monitorActivty(kq);
+		std::cout << "nb events: " << eventCount << std::endl;
 		for (int i = 0; i < eventCount; i++)
 		{
-
 			try
 			{
 				fd = evList[i].ident;
