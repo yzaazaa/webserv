@@ -204,6 +204,7 @@ void	Cgi::execFile(int kq, Server &server)
 	KqueueUtils::RegisterEvents(kq, fd[1]);
 	server.addFd(fd[1], client->socket);
 	std::cout << "added fd[1] to kqueue\n";
+	client->lastTime = ft_time();
 }
 
 void	Cgi::prepareResponse(Server& server, int kq, int fildes)
@@ -213,7 +214,7 @@ void	Cgi::prepareResponse(Server& server, int kq, int fildes)
 	close(fd[1]);
 	KqueueUtils::EnableEvent(kq, client->socket, WRITE);
 	client->Response.IsLastResponse = true;
-	client->Response.CloseConnection = true;
+	client->Response.CloseConnection = false;
 	client->lastTime = ft_time();
 }
 

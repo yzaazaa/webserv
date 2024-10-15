@@ -208,10 +208,10 @@ void	Client::OnSocket_ReadyForWrite(Server& server, int kq, int fd)
 	}
 
 	Response.Reset();
+	lastTime = ft_time();
 	// Read more
 	KqueueUtils::DisableEvent(kq, fd, WRITE);
 	KqueueUtils::EnableEvent(kq, fd, READ);
-	lastTime = ft_time();
 }
 
 void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
@@ -243,8 +243,10 @@ void	Client::OnFile_ReadyForRead(Server &server, int kq, int fd)
 	if (Response.Buffer.empty())
 	{
 		std::ostringstream	stream;
-
-		stream << "HTTP/1.1 200 OK" << Endl_Request;
+		if (Request.method == "get")
+			stream << "HTTP/1.1 200 OK" << Endl_Request;
+		else
+			stream << "HTTP/1.1 201 CREATED" << Endl_Request;
 
 		Response.Buffer = stream.str();
 	}
